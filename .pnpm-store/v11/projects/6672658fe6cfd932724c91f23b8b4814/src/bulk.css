@@ -1,0 +1,22 @@
+/* La tabla aprovecha el ancho del panel en escritorio y conserva scroll sólo en móvil. */
+.content { max-width: 1280px; }
+.bulk-card { width: 100%; max-width: none; }
+.bulk-card .table { table-layout: fixed; }
+.bulk-card .table th:nth-child(1) { width: 24%; }
+.bulk-card .table th:nth-child(2) { width: 27%; }
+.bulk-card .table th:nth-child(3) { width: 16%; }
+.bulk-card .table th:nth-child(4) { width: 18%; }
+.bulk-card .table th:nth-child(5) { width: 15%; }
+.bulk-card .table td { overflow-wrap: anywhere; vertical-align: top; }
+.bulk-card .table select, .bulk-card .table input { width: 100%; max-width: 100%; }
+.bulk-card .table input { width: calc(50% - 3px); margin-right: 5px; }
+.bulk-card .table input + input { margin-right: 0; }
+.bulk-progress { color: #1b2a4a; font-weight: 600; }
+.bulk-status { font: 600 11px 'JetBrains Mono'; white-space: nowrap; }
+.bulk-status.ok { color: #237a3b; }
+.bulk-status.error { color: #c0281c; }
+.bulk-status.subiendo, .bulk-status.confirmando { color: #8b6e0b; }
+
+@media (max-width: 700px) {
+  .bulk-card .table { table-layout: auto; min-width: 780px; }
+}

@@ -1,0 +1,37 @@
+{
+	"name": "backend",
+	"version": "1.0.0",
+	"type": "module",
+	"dependencies": {
+		"@libsql/client": "^0.18.0",
+		"@supabase/supabase-js": "^2.116.0",
+		"bcryptjs": "^3.0.3",
+		"cookie-parser": "^1.4.7",
+		"cors": "^2.8.5",
+		"dotenv": "^18.0.0",
+		"drizzle-orm": "1.0.0-rc.4",
+		"express": "^5.1.0",
+		"express-rate-limit": "^8.1.0",
+		"helmet": "^8.1.0",
+		"jsonwebtoken": "^9.0.2",
+		"zod": "^4.1.12"
+	},
+	"devDependencies": {
+		"drizzle-kit": "1.0.0-rc.4"
+	},
+	"scripts": {
+		"dev": "node --watch src/server.js",
+		"start": "node src/server.js",
+		"migrate": "drizzle-kit migrate",
+		"generate": "drizzle-kit generate",
+		"seed": "node src/db/seed.js",
+		"bootstrap-admin": "node src/scripts/bootstrap-admin.js",
+		"test": "node --test test/**/*.test.js",
+    "e2e:auth": "node src/scripts/e2e-auth.js",
+    "e2e:password-change": "node src/scripts/e2e-password-change.js",
+		"e2e:admin": "node src/scripts/e2e-admin.js",
+		"e2e:payslips": "node src/scripts/e2e-payslips.js",
+		"e2e:bulk": "node src/scripts/e2e-bulk-payslips.js",
+		"e2e:announcements": "node src/scripts/e2e-announcements.js"
+	}
+}

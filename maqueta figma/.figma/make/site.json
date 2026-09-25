@@ -1,0 +1,10 @@
+{
+  "description": "Streamlined platform for educators and administrative staff at Instituto Mixto Secundario, featuring announcements, payroll access, and management tools.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}

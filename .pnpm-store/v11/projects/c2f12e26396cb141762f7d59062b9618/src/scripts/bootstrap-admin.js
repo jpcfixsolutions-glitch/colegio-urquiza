@@ -1,0 +1,13 @@
+import "dotenv/config";
+import bcrypt from "bcryptjs";
+import { randomUUID } from "node:crypto";
+import { eq } from "drizzle-orm";
+import { db } from "../config/db.js";
+import { roles, userRoles, users } from "../db/schema.js";
+const [email, password] = process.argv.slice(2);
+if (!email || !password || password.length < 12) throw new Error("Uso: pnpm bootstrap-admin <email> <contraseña de al menos 12 caracteres>");
+const existing = await db.select().from(users).where(eq(users.email, email));
+if (existing.length) throw new Error("Ya existe un usuario con ese email");
+const [adminRole] = await db.select().from(roles).where(eq(roles.name, "ADMIN"));
+if (!adminRole) throw new Error("Ejecute primero el seed");
+const id = randomUUID(); await db.insert(users).values({ id, email, passwordHash: await bcrypt.hash(password, 12), mustChangePassword: true }); await db.insert(userRoles).values({ userId:id,roleId:adminRole.id }); console.log("ADMIN creado. Debe cambiar su contraseña al iniciar sesión.");
