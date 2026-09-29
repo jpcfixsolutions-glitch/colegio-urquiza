@@ -183,3 +183,71 @@
 
 Todos los hitos H1–H7 están completados y verificados según los comandos
 registrados arriba.
+
+## Ronda final de UX posterior a UAT (2026-09-27)
+
+- El muro ahora muestra fecha de publicación, prioridad persistente, estado
+  leído/no leído y separación temporal (Hoy, Ayer o fecha), sin modificar la
+  consulta de audiencia, vencimiento ni lectura.
+- La carga individual mantiene una tarjeta de confirmación con empleado,
+  período, tipo y resultado. La carga masiva conserva el límite de 4 workers
+  y usa todo el ancho disponible en escritorio; el scroll horizontal queda
+  reservado para móvil.
+- La apertura de PDF conserva la pestaña iniciada por el gesto del usuario,
+  pero muestra “Abriendo recibo…” mientras se obtiene la URL firmada y un
+  estado de error en la misma pestaña si falla.
+- Se reemplazaron las confirmaciones nativas por una modal de la aplicación
+  para archivar/desarchivar recibos, archivar avisos y activar/desactivar
+  empleados o cuentas. La modal explica el alcance y bloquea doble envío.
+- Se agregó `POST /api/payslips/:id/unarchive`, protegido por
+  `PAYSLIP_MANAGE`, con validación de archivo activo y auditoría
+  `PAYSLIP_UNARCHIVED`. La E2E de recibos verifica que el administrador abre
+  un archivado, que el empleado no lo ve archivado y que lo vuelve a ver tras
+  desarchivarlo.
+- Los campos de contraseña usan control accesible mostrar/ocultar. Las cuentas
+  distinguen visualmente Activa/Inactiva de Cambio pendiente/Contraseña normal,
+  y el reset de una cuenta inactiva informa explícitamente que no la activa.
+- Verificaciones: `pnpm test` y `pnpm build` en frontend, y `pnpm test` más
+  `pnpm e2e:payslips` en backend, correctos.
+
+## Pulido final de etiquetas e identidad visual (2026-09-27)
+
+- Se agregó `frontend/src/uiLabels.js`, con el mapa explícito `UI_LABELS` y el
+  formatter `formatTechnicalLabel`. El normalizador de presentación traduce
+  enums y estados visibles sin modificar sus valores internos ni contratos API.
+- Se reutilizó `frontend/src/imgs/Isologotipo IMSU - RGB.png` en login, sidebar
+  administrativa y cabeceras autenticadas, manteniendo sus proporciones.
+- Verificaciones: `pnpm test` (4/4) y `pnpm build` en frontend, correctos.
+
+## Keep-alive de Supabase Free (2026-09-27)
+
+- Se agregó `GET /api/cron/supabase-keepalive` exclusivamente en backend. Exige
+  `Authorization: Bearer $CRON_SECRET` y compara el secreto de forma segura;
+  sin credencial o con una incorrecta responde 401.
+- Con una credencial válida utiliza el cliente backend de Supabase para ejecutar
+  `UPDATE public.keepalive SET touched_at = ... WHERE id = 1`; responde sólo
+  `{ ok: true }` y transforma fallas de Supabase en un 500 sin exponer detalles.
+- `backend/vercel.json` programa el endpoint diariamente con `0 12 * * *`.
+  `DEPLOYMENT.md` y `.env.example` incorporan `CRON_SECRET` y su generación
+  segura. No se modificaron Turso, RBAC ni el frontend.
+- Verificación: `pnpm test` en `backend` pasó (6/6), incluyendo los cuatro
+  casos del keep-alive: sin autorización, autorización incorrecta, autorización
+  válida con actualización y fallo controlado de Supabase.
+
+## Corrección de carga de CRON_SECRET (2026-09-28)
+
+- Causa raíz: el runtime dependía de varios `import "dotenv/config"` implícitos.
+  Esas cargas resuelven `.env` desde el `cwd` y, por defecto, no reemplazan una
+  variable ya heredada por el proceso. Por eso el proceso Express podía conservar
+  un `CRON_SECRET` distinto al archivo `backend/.env` y rechazar su bearer.
+- Se centralizó la carga en `src/config/env.js`: resuelve explícitamente
+  `backend/.env`, reemplaza variables heredadas sólo en desarrollo/test y deja
+  que producción conserve las variables del proveedor. `src/server.js` carga
+  esa configuración antes de importar dinámicamente la app; `db` y `supabase`
+  reutilizan el mismo módulo.
+- El handler del keep-alive ya no captura el secreto al construir la ruta: lo
+  obtiene al atender cada request. Se añadió integración por proceso hijo que
+  inicia el mismo `src/server.js` usado por `pnpm dev`, carga un env aislado y
+  verifica `Authorization: Bearer <CRON_SECRET>` con respuesta 200 y operación
+  HTTP de Supabase.
+- Verificación: `pnpm test` en `backend` pasó (7/7).

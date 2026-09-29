@@ -127,8 +127,12 @@ async function run() {
   const archivedList = await request("/me/payslips", { token: ownerLogin.payload.accessToken });
   expectStatus(archivedList, 200, "lista después de archivo");
   assert.ok(!archivedList.payload.items.some((item) => item.id === createIntent.payload.payslipId), "no expone recibo archivado al empleado");
+  expectStatus(await request(`/payslips/${createIntent.payload.payslipId}/view`, { token: managerLogin.payload.accessToken }), 200, "gestor abre recibo archivado desde historial");
+  expectStatus(await request(`/payslips/${createIntent.payload.payslipId}/unarchive`, { method: "POST", token: managerLogin.payload.accessToken }), 204, "desarchiva recibo");
+  const restoredList = await request("/me/payslips", { token: ownerLogin.payload.accessToken });
+  assert.ok(restoredList.payload.items.some((item) => item.id === createIntent.payload.payslipId), "vuelve a exponer el recibo al empleado tras desarchivarlo");
 
-  console.log("E2E recibos OK: intent, subida directa, confirmación, acceso contextual, reemplazo y archivo.");
+  console.log("E2E recibos OK: intent, subida directa, confirmación, acceso contextual, reemplazo, archivo y desarchivo.");
 }
 
 try {

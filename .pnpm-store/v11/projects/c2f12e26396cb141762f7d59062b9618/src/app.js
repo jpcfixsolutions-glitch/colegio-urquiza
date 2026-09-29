@@ -4,8 +4,9 @@ import cors from "cors";
 import cookieParser from "cookie-parser";
 import { errorHandler, notFound } from "./middlewares/error-handler.js";
 import apiRoutes from "./routes/api.routes.js";
+import { createSupabaseKeepaliveRouter } from "./routes/supabase-keepalive.routes.js";
 
-export function createApp() {
+export function createApp(options = {}) {
   const app = express();
   const origins = (process.env.FRONTEND_ORIGIN || "http://localhost:5173").split(",").map((origin) => origin.trim());
   app.set("trust proxy", 1);
@@ -14,6 +15,7 @@ export function createApp() {
   app.use(express.json({ limit: "1mb" }));
   app.use(cookieParser());
   app.get("/api/health", (req, res) => res.json({ status: "ok" }));
+  app.use("/api/cron", createSupabaseKeepaliveRouter(options));
   app.use("/api", apiRoutes);
   app.use(notFound);
   app.use(errorHandler);

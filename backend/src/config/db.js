@@ -1,4 +1,4 @@
-import "dotenv/config";
+import "./env.js";
 import { createClient } from "@libsql/client";
 import { drizzle } from "drizzle-orm/libsql";
 
