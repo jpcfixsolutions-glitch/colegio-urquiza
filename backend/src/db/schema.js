@@ -268,6 +268,31 @@ export const employees = sqliteTable(
         employeeNumber: text("employee_number")
             .notNull(),
 
+        cuit: text("cuit"),
+
+        dni: text("dni"),
+
+        personalEmail: text("personal_email"),
+
+        address: text("address"),
+
+        phone: text("phone"),
+
+        maritalStatus: text("marital_status", {
+            enum: [
+                "SINGLE",
+                "MARRIED",
+                "PARTNERED",
+                "DIVORCED",
+                "WIDOWED",
+                "OTHER",
+            ],
+        }),
+
+        profileUpdatedAt: integer("profile_updated_at", {
+            mode: "timestamp",
+        }),
+
         firstName: text("first_name")
             .notNull(),
 
@@ -290,6 +315,12 @@ export const employees = sqliteTable(
 
         uniqueIndex("employees_number_unique")
             .on(table.employeeNumber),
+
+        uniqueIndex("employees_cuit_unique")
+            .on(table.cuit),
+
+        uniqueIndex("employees_dni_unique")
+            .on(table.dni),
 
         index("employees_active_idx")
             .on(table.active),
@@ -408,6 +439,8 @@ export const payslips = sqliteTable(
         documentType: text("document_type", {
             enum: [
                 "SALARY",
+                "EARNINGS",
+                "NOTIFICATION",
                 "SAC",
                 "VACATION",
                 "FINAL_SETTLEMENT",
@@ -419,6 +452,16 @@ export const payslips = sqliteTable(
             .default("SALARY"),
 
         title: text("title"),
+
+        notifyUser: integer("notify_user", {
+            mode: "boolean",
+        })
+            .notNull()
+            .default(false),
+
+        notificationReadAt: integer("notification_read_at", {
+            mode: "timestamp",
+        }),
 
         status: text("status", {
             enum: [
@@ -454,6 +497,8 @@ export const payslips = sqliteTable(
             "payslips_document_type_check",
             sql`${table.documentType} IN (
         'SALARY',
+        'EARNINGS',
+        'NOTIFICATION',
         'SAC',
         'VACATION',
         'FINAL_SETTLEMENT',

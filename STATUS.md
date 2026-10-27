@@ -2,6 +2,28 @@
 
 ## Implementado
 
+- Onboarding de empleados en dos etapas: primero cambio obligatorio de
+  contraseña y luego formulario obligatorio de datos personales. El perfil
+  incluye email personal, domicilio, teléfono, estado civil, DNI y CUIT; queda
+  disponible para el empleado en `Datos personales` y para administradores en
+  `Personal`. Cada confirmación programa una revisión a los tres meses
+  calendario y la interfaz vuelve a dirigir al empleado a su perfil al vencer.
+- Se separó el listado mínimo para gestión de recibos del perfil administrativo
+  completo para no exponer domicilio, teléfono, DNI o estado civil a roles sin
+  `EMPLOYEE_MANAGE`. La migración versionada
+  `20261026223111_elite_psynapse` fue aplicada correctamente en Turso.
+- Recibos administrativos unificados en `Historial` y `Carga de documentos`.
+  La carga abre una modal para período, tipo (Mensual, Ganancias, Notificación,
+  Liquidación final o SAC), modalidad ZIP/PDF separados y notificación interna.
+  El ZIP se descomprime en el navegador y cada PDF mantiene el flujo directo a
+  Supabase Storage. La revisión reconoce
+  `Liquidacion_MM-AAAA_CUIT_Nombre y Apellido_Nro.pdf`, permite corregir la
+  asociación y procesa fallos de forma independiente.
+- Se agregó CUIT único opcional a empleados y avisos de recibo nuevo para el
+  usuario, mediante la migración versionada
+  `20261026221626_reflective_mimic`; fue aplicada correctamente en Turso.
+- CORS local admite `localhost`, `127.0.0.1` y `[::1]` con cualquier puerto
+  únicamente en desarrollo; producción continúa restringida a `FRONTEND_ORIGIN`.
 - Schema inicial de 15 tablas y seed RBAC; migración inicial intacta.
 - Base Express, JWT, cookies refresh, permisos, áreas/empleados/usuarios, recibos, avisos y frontend JSX inicial.
 - Storage firmado y endpoints de versionado/revisión masiva iniciales.
@@ -9,7 +31,14 @@
 
 ## Probado automáticamente
 
-- Dos tests unitarios mínimos pasan: path seguro y creación de app.
+- La suite backend pasa 15/15 tests. La E2E de autenticación verifica la
+  secuencia contraseña -> perfil obligatorio -> acceso, y las E2E de
+  administración y carga masiva siguen pasando contra Turso/Supabase.
+- La suite backend pasa 11/11 tests; las E2E de recibos y carga masiva pasaron
+  contra Turso y Supabase, incluida la asociación por CUIT y la notificación
+  que queda leída al abrir el documento. Frontend pasa 4/4 tests y build Vite.
+- La suite backend pasa 8/8 tests, incluida la regresión de CORS local y la
+  restricción de orígenes en producción.
 - Frontend build pasó antes de este hito.
 - Seed idempotente pasó dos veces contra Turso.
 - H1 Auth/RBAC E2E completado contra Turso: login válido/incorrecto/inactivo,

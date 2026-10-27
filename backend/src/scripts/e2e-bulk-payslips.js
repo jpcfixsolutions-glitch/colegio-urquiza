@@ -43,22 +43,22 @@ async function clean() {
 
 async function run() {
   await clean();
-  const employee={id:randomUUID(),employeeNumber:"990000000001",firstName:"Carga",lastName:"Masiva"};
+  const employee={id:randomUUID(),employeeNumber:"990000000001",cuit:"20990000001",firstName:"Carga",lastName:"Masiva"};
   await db.insert(employees).values(employee);
   const id=randomUUID(); const [role]=await db.select().from(roles).where(eq(roles.name,"PAYROLL_MANAGER"));
   await db.insert(users).values({id,email:`${prefix}manager@example.test`,username:`${prefix}manager`,passwordHash:await bcrypt.hash(password,12),mustChangePassword:false});
   await db.insert(userRoles).values({userId:id,roleId:role.id});
   await new Promise(resolve=>{server=createApp().listen(0,"127.0.0.1",resolve);}); baseUrl=`http://127.0.0.1:${server.address().port}/api`;
   const login=await request("/auth/login",{method:"POST",body:{identifier:`${prefix}manager`,password}}); expect(login,200,"login manager");
-  const review=await request("/admin/payslips/bulk-review",{method:"POST",token:login.payload.accessToken,body:{files:[{name:"990000000001_2026_09.pdf",mimeType:"application/pdf",sizeBytes:64},{name:"99999_2026_09.pdf",mimeType:"application/pdf",sizeBytes:64},{name:"no-es-pdf.txt",mimeType:"text/plain",sizeBytes:64}]}});
+  const review=await request("/admin/payslips/bulk-review",{method:"POST",token:login.payload.accessToken,body:{month:9,year:2026,files:[{name:"Liquidacion_09-2026_20990000001_Carga Masiva_1.pdf",mimeType:"application/pdf",sizeBytes:64},{name:"Liquidacion_09-2026_20999999999_Sin Asociar_1.pdf",mimeType:"application/pdf",sizeBytes:64},{name:"no-es-pdf.txt",mimeType:"text/plain",sizeBytes:64}]}});
   expect(review,200,"revisión de lote"); assert.equal(review.payload.summary.ready,1); assert.equal(review.payload.summary.unmatched,1); assert.equal(review.payload.summary.invalid,1);
   const pdf=Buffer.from("%PDF-1.4\n%%EOF\n");
-  const intents=await request("/admin/payslips/bulk-upload-intents",{method:"POST",token:login.payload.accessToken,body:{items:[{clientId:"ok",employeeId:employee.id,year:2026,month:9,documentType:"SALARY",title:"E2E bulk valid",originalFileName:"990000000001_2026_09.pdf",mimeType:"application/pdf",sizeBytes:pdf.length},{clientId:"bad-employee",employeeId:randomUUID(),year:2026,month:9,documentType:"SALARY",title:"E2E bulk invalid employee",originalFileName:"99999_2026_09.pdf",mimeType:"application/pdf",sizeBytes:pdf.length}]}});
+  const intents=await request("/admin/payslips/bulk-upload-intents",{method:"POST",token:login.payload.accessToken,body:{items:[{clientId:"ok",employeeId:employee.id,year:2026,month:9,documentType:"EARNINGS",notifyUser:true,title:"E2E bulk valid",originalFileName:"Liquidacion_09-2026_20990000001_Carga Masiva_1.pdf",mimeType:"application/pdf",sizeBytes:pdf.length},{clientId:"bad-employee",employeeId:randomUUID(),year:2026,month:9,documentType:"SALARY",title:"E2E bulk invalid employee",originalFileName:"Liquidacion_09-2026_20999999999_Sin Asociar_1.pdf",mimeType:"application/pdf",sizeBytes:pdf.length}]}});
   expect(intents,201,"intents por archivo"); assert.equal(intents.payload.summary.ready,1); assert.equal(intents.payload.summary.failed,1,"un fallo parcial no debe abortar el archivo válido");
   const ready=intents.payload.items.find(item=>item.clientId==="ok"); storagePaths.add(ready.storagePath);
   const upload=await fetch(ready.upload.signedUrl,{method:"PUT",headers:{"content-type":"application/pdf","x-upsert":"false"},body:pdf}); assert.ok(upload.ok,`subida directa debe responder OK (${upload.status})`);
   expect(await request(`/payslips/${ready.payslipId}/confirm`,{method:"POST",token:login.payload.accessToken}),204,"confirmación independiente");
-  const [saved]=await db.select().from(payslips).where(eq(payslips.id,ready.payslipId)); assert.equal(saved.status,"ACTIVE");
+  const [saved]=await db.select().from(payslips).where(eq(payslips.id,ready.payslipId)); assert.equal(saved.status,"ACTIVE"); assert.equal(saved.documentType,"EARNINGS"); assert.equal(saved.notifyUser,true);
   console.log("E2E carga masiva OK: revisión, asociación, corrección y fallo parcial aislado.");
 }
 try { await run(); } finally { if(server) await new Promise((resolve,reject)=>server.close(error=>error?reject(error):resolve())); await clean(); console.log("Limpieza verificada: no quedan datos e2e_bulk_ ni objetos de Storage creados por la suite."); }

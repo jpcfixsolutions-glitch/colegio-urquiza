@@ -14,7 +14,7 @@ process.env.JWT_REFRESH_SECRET ||= "e2e-only-refresh-secret-not-for-production";
 
 const { createApp } = await import("../app.js");
 const { db } = await import("../config/db.js");
-const { auditLogs, authSessions, roles, userRoles, users } = await import("../db/schema.js");
+const { auditLogs, authSessions, employees, roles, userRoles, users } = await import("../db/schema.js");
 
 const prefix = "e2e_auth_";
 const password = "E2eAuthPassword!2026";
@@ -47,15 +47,18 @@ function expectStatus(result, status, context) {
 async function clean() {
   const e2eUsers = await db.select({ id: users.id }).from(users).where(like(users.email, `${prefix}%`));
   const ids = e2eUsers.map((user) => user.id);
-  if (!ids.length) return;
-  await db.delete(auditLogs).where(inArray(auditLogs.actorUserId, ids));
-  await db.delete(authSessions).where(inArray(authSessions.userId, ids));
-  await db.delete(users).where(inArray(users.id, ids));
+  if (ids.length) {
+    await db.delete(auditLogs).where(inArray(auditLogs.actorUserId, ids));
+    await db.delete(authSessions).where(inArray(authSessions.userId, ids));
+    await db.delete(users).where(inArray(users.id, ids));
+  }
+  const e2eEmployees = await db.select({ id: employees.id }).from(employees).where(like(employees.employeeNumber, "E2EAUTH%"));
+  if (e2eEmployees.length) await db.delete(employees).where(inArray(employees.id, e2eEmployees.map((employee) => employee.id)));
   const remaining = await db.select({ id: users.id }).from(users).where(like(users.email, `${prefix}%`));
   if (remaining.length) fail("la limpieza dejó usuarios e2e_auth_ en Turso");
 }
 
-async function createUser({ name, active = true, mustChangePassword = false, roleNames }) {
+async function createUser({ name, active = true, mustChangePassword = false, roleNames, linkEmployee = false }) {
   const id = randomUUID();
   await db.insert(users).values({
     id,
@@ -68,7 +71,12 @@ async function createUser({ name, active = true, mustChangePassword = false, rol
   const selectedRoles = await db.select().from(roles).where(inArray(roles.name, roleNames));
   if (selectedRoles.length !== roleNames.length) fail("faltan roles; ejecute pnpm seed antes del E2E");
   await db.insert(userRoles).values(selectedRoles.map((role) => ({ userId: id, roleId: role.id })));
-  return { id, identifier: `${prefix}${name}` };
+  let employeeId = null;
+  if (linkEmployee) {
+    employeeId = randomUUID();
+    await db.insert(employees).values({ id: employeeId, userId: id, employeeNumber: `E2EAUTH-${name}`, firstName: "Perfil", lastName: "Prueba" });
+  }
+  return { id, employeeId, identifier: `${prefix}${name}` };
 }
 
 async function startServer() {
@@ -86,7 +94,7 @@ async function stopServer() {
 
 async function run() {
   await clean();
-  const employee = await createUser({ name: "employee", mustChangePassword: true, roleNames: ["EMPLOYEE"] });
+  const employee = await createUser({ name: "employee", mustChangePassword: true, roleNames: ["EMPLOYEE"], linkEmployee: true });
   const inactive = await createUser({ name: "inactive", active: false, roleNames: ["EMPLOYEE"] });
   const multiRole = await createUser({ name: "multi", roleNames: ["PAYROLL_MANAGER", "COMMUNICATION_MANAGER"] });
   await startServer();
@@ -103,7 +111,15 @@ async function run() {
   expectStatus(await request("/auth/me", { token: login.payload.accessToken }), 200, "permite consultar perfil antes de cambiar contraseña");
   expectStatus(await request("/announcements", { token: login.payload.accessToken }), 403, "bloquea recursos hasta cambiar contraseña");
   expectStatus(await request("/auth/change-password", { method: "POST", token: login.payload.accessToken, body: { currentPassword: password, newPassword: changedPassword } }), 204, "permite resolver cambio obligatorio");
-  expectStatus(await request("/announcements", { token: login.payload.accessToken }), 200, "habilita recursos tras cambiar contraseña");
+  expectStatus(await request("/me/profile", { token: login.payload.accessToken }), 200, "habilita el formulario personal después de cambiar contraseña");
+  expectStatus(await request("/announcements", { token: login.payload.accessToken }), 403, "bloquea recursos hasta completar datos personales");
+  const completedProfile = await request("/me/profile", { method: "PATCH", token: login.payload.accessToken, body: { personalEmail: "perfil@example.test", address: "Calle de prueba 123", phone: "3515555555", maritalStatus: "SINGLE", dni: "30999001", cuit: "20309990019" } });
+  expectStatus(completedProfile, 200, "permite completar datos personales");
+  assert.equal(completedProfile.payload.item.profileComplete, true, "el perfil queda completo");
+  const identityAfterProfile = await request("/auth/me", { token: login.payload.accessToken });
+  assert.equal(identityAfterProfile.payload.user.profileComplete, true, "auth/me refleja el perfil completo");
+  assert.equal(identityAfterProfile.payload.user.profileNeedsReview, false, "un perfil recién confirmado no requiere revisión trimestral");
+  expectStatus(await request("/announcements", { token: login.payload.accessToken }), 200, "habilita recursos tras completar el perfil");
 
   const refreshed = await request("/auth/refresh", { method: "POST", cookie: login.cookie });
   expectStatus(refreshed, 200, "renueva sesión válida");
@@ -120,7 +136,7 @@ async function run() {
   expectStatus(await request("/admin/announcements", { token: multiLogin.payload.accessToken }), 200, "autoriza permiso de comunicaciones por roles combinados");
   expectStatus(await request("/areas", { token: multiLogin.payload.accessToken }), 200, "permite leer áreas para seleccionar audiencias");
 
-  console.log("E2E auth/RBAC OK: login, refresh, logout, cambio obligatorio, inactividad y RBAC multirol.");
+  console.log("E2E auth/RBAC OK: login, cambio de contraseña, perfil obligatorio, refresh, logout, inactividad y RBAC multirol.");
 }
 
 try {
