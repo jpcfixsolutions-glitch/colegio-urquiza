@@ -280,3 +280,16 @@ registrados arriba.
   verifica `Authorization: Bearer <CRON_SECRET>` con respuesta 200 y operación
   HTTP de Supabase.
 - Verificación: `pnpm test` en `backend` pasó (7/7).
+
+## Preparación de workspace para Vercel (2026-10-27)
+
+- Se corrigieron `backend/pnpm-workspace.yaml` y
+  `frontend/pnpm-workspace.yaml` agregando el campo `packages`, requerido por
+  pnpm 9 en el entorno de build de Vercel. La ausencia de ese campo provocaba
+  `ERROR packages field missing or empty` antes de compilar la aplicación.
+- Se amplió a 15 segundos el margen de arranque de la prueba de integración del
+  keep-alive para evitar falsos negativos por carga concurrente del runner; no
+  cambia el comportamiento productivo.
+- Verificaciones: instalación con lockfile congelado y `pnpm test` en backend
+  pasaron (15/15); instalación, `pnpm test` (4/4) y `pnpm build` en frontend
+  también pasaron.
