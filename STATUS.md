@@ -293,3 +293,14 @@ registrados arriba.
 - Verificaciones: instalación con lockfile congelado y `pnpm test` en backend
   pasaron (15/15); instalación, `pnpm test` (4/4) y `pnpm build` en frontend
   también pasaron.
+
+## Cookie de sesión entre proyectos Vercel (2026-10-27)
+
+- La cookie HTTP-only de refresh usa ahora `Secure`, `SameSite=None` y
+  `Partitioned` en producción para admitir login, recarga y rotación de sesión
+  desde un frontend servido por otro proyecto/dominio de Vercel.
+- En desarrollo conserva `SameSite=Lax` y no requiere HTTPS. CORS continúa
+  aceptando credenciales únicamente desde `FRONTEND_ORIGIN` en producción.
+- Se agregó una regresión que valida tanto las opciones por entorno como el
+  header `Set-Cookie` real serializado por Express.
+- Verificación: `pnpm test` en backend pasó (16/16).

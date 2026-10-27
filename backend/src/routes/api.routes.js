@@ -40,12 +40,22 @@ const personalProfileSchema = z.object({
 const createAnnouncementExpiry = z.preprocess((value) => value == null || value === "" ? null : value, z.coerce.date().nullable());
 const updateAnnouncementExpiry = z.preprocess((value) => value === null || value === "" ? null : value, z.coerce.date().nullable().optional());
 const hashToken = (token) => createHash("sha256").update(token).digest("hex");
-const cookieOptions = () => ({ httpOnly: true, secure: process.env.NODE_ENV === "production", sameSite: "lax", maxAge: Number(process.env.JWT_REFRESH_TTL_SECONDS || 1209600) * 1000, path: "/api/auth" });
+export const refreshCookieOptions = (nodeEnv = process.env.NODE_ENV) => {
+  const isProduction = nodeEnv === "production";
+  return {
+    httpOnly: true,
+    secure: isProduction,
+    sameSite: isProduction ? "none" : "lax",
+    partitioned: isProduction,
+    maxAge: Number(process.env.JWT_REFRESH_TTL_SECONDS || 1209600) * 1000,
+    path: "/api/auth",
+  };
+};
 const userDto = (identity) => ({ id: identity.id, email: identity.email, username: identity.username, employeeId: identity.employeeId, permissions: identity.permissions, roles: identity.roles, mustChangePassword: identity.mustChangePassword, profileComplete: identity.profileComplete, profileNeedsReview: identity.profileNeedsReview, profileUpdatedAt: identity.profileUpdatedAt, profileReviewDueAt: identity.profileReviewDueAt });
 async function issueSession(req, res, user) {
   const id = newSessionId(); const refresh = signRefreshToken(user.id, id);
   await db.insert(authSessions).values({ id, userId: user.id, refreshTokenHash: hashToken(refresh), expiresAt: refreshExpiry(), ipAddress: req.ip, userAgent: req.get("user-agent") });
-  res.cookie("refresh_token", refresh, cookieOptions());
+  res.cookie("refresh_token", refresh, refreshCookieOptions());
   return signAccessToken(user.id);
 }
 function requirePasswordChange(req, res, next) {
@@ -79,7 +89,7 @@ router.post("/auth/refresh", asyncHandler(async (req, res) => {
   const identity = await getIdentity(payload.sub); if (!identity) throw new ApiError(401, "Usuario inactivo");
   const accessToken = await issueSession(req, res, identity); res.json({ accessToken, user: userDto(identity) });
 }));
-router.post("/auth/logout", asyncHandler(async (req, res) => { const token = req.cookies.refresh_token; if (token) await db.update(authSessions).set({ revokedAt: new Date() }).where(eq(authSessions.refreshTokenHash, hashToken(token))); res.clearCookie("refresh_token", cookieOptions()); await audit(req, "AUTH_LOGOUT", "session"); res.status(204).end(); }));
+router.post("/auth/logout", asyncHandler(async (req, res) => { const token = req.cookies.refresh_token; if (token) await db.update(authSessions).set({ revokedAt: new Date() }).where(eq(authSessions.refreshTokenHash, hashToken(token))); res.clearCookie("refresh_token", refreshCookieOptions()); await audit(req, "AUTH_LOGOUT", "session"); res.status(204).end(); }));
 router.get("/auth/me", authenticateJWT, (req, res) => res.json({ user: userDto(req.user) }));
 router.post("/auth/change-password", authenticateJWT, validate(z.object({ body: z.object({ currentPassword: z.string().min(1), newPassword: z.string().min(12) }) })), asyncHandler(async (req, res) => { const { currentPassword, newPassword } = req.validated.body; await changeOwnPassword(req.user.id, currentPassword, newPassword); await audit(req, "PASSWORD_CHANGED", "user", req.user.id); res.status(204).end(); }));
 

@@ -52,3 +52,15 @@ openssl rand -base64 32
 
 No reutilizar este valor para JWT, Supabase ni ninguna otra credencial, y no lo
 incluir en archivos versionados ni logs.
+
+## Sesión entre proyectos separados
+
+El frontend envía credenciales en las llamadas a la API y el backend restringe
+CORS al valor exacto de `FRONTEND_ORIGIN`. En producción, la cookie HTTP-only
+de refresh se emite con `Secure`, `SameSite=None` y `Partitioned` para permitir
+la renovación de sesión cuando frontend y backend están en proyectos y dominios
+de Vercel separados. En desarrollo conserva `SameSite=Lax` sin `Secure` para
+seguir funcionando por HTTP local.
+
+Configurar `FRONTEND_ORIGIN` con el origen HTTPS del frontend, sin path ni barra
+final, y redesplegar el backend cada vez que cambie ese valor.
