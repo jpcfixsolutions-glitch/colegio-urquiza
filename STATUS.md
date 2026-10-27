@@ -304,3 +304,32 @@ registrados arriba.
 - Se agregó una regresión que valida tanto las opciones por entorno como el
   header `Set-Cookie` real serializado por Express.
 - Verificación: `pnpm test` en backend pasó (16/16).
+
+## Rediseño integral del frontend (2026-10-27)
+
+- Se implementó un sistema visual institucional reutilizable con tokens de
+  color, tipografía, espaciado, radios, sombras y estados; se mantuvieron React,
+  Vite y JavaScript/JSX sin incorporar una biblioteca UI pesada.
+- El login, el cambio obligatorio de contraseña y el perfil inicial fueron
+  renovados con identidad del Instituto, jerarquía tipográfica más clara,
+  controles accesibles y comportamiento específico para celular.
+- El shell administrativo incorpora sidebar moderno y colapsable en escritorio,
+  drawer móvil, topbar contextual, navegación por permisos e iconografía SVG
+  local. El resumen usa únicamente endpoints existentes para mostrar personal
+  activo, usuarios habilitados, recibos del mes, avisos publicados y estados que
+  requieren atención; no se agregaron métricas ficticias ni cambios de backend.
+- Áreas, Personal, Usuarios, Avisos y Recibos comparten encabezados, filtros,
+  buscadores, badges semánticos, menús de acciones, confirmaciones y modales.
+  Avisos usa un listado editorial; las tablas administrativas se convierten en
+  tarjetas etiquetadas en móvil en lugar de depender del scroll horizontal.
+- La carga de documentos, el historial, el reemplazo y la experiencia del
+  empleado conservaron sus flujos reales, permisos, signed URLs y procesamiento
+  directo a Storage. No se modificaron autenticación, contratos API, schema ni
+  migraciones, y `maqueta figma` permaneció intacta.
+- Verificación automática: `pnpm test` en frontend pasó (4/4) y `pnpm build`
+  completó correctamente (45 módulos transformados).
+- Verificación visual en navegador con una base SQLite local aislada y datos de
+  prueba descartados al finalizar: login, dashboard, Áreas, Personal, Usuarios,
+  Avisos, Recibos y modal de carga. Se comprobaron 320, 360, 390, 768, 1024,
+  1280, 1440 y 1920 px, más el equivalente de layout a zoom 200%; no hubo
+  desborde horizontal accidental ni errores de consola.

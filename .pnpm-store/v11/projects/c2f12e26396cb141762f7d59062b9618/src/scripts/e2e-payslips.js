@@ -99,7 +99,7 @@ async function run() {
   expectStatus(outsiderLogin, 200, "login empleado ajeno");
 
   const firstPdf = Buffer.from("%PDF-1.4\n1 0 obj\n<< /Type /Catalog >>\nendobj\ntrailer\n<<>>\n%%EOF\n");
-  const createIntent = await request("/payslips/upload-intents", { method: "POST", token: managerLogin.payload.accessToken, body: { employeeId: employeeA.id, year: 2026, month: 9, documentType: "SALARY", title: "E2E payslip initial", originalFileName: "e2e-initial.pdf", mimeType: "application/pdf", sizeBytes: firstPdf.length } });
+  const createIntent = await request("/payslips/upload-intents", { method: "POST", token: managerLogin.payload.accessToken, body: { employeeId: employeeA.id, year: 2026, month: 9, documentType: "NOTIFICATION", notifyUser: true, title: "E2E payslip initial", originalFileName: "e2e-initial.pdf", mimeType: "application/pdf", sizeBytes: firstPdf.length } });
   expectStatus(createIntent, 201, "manager genera upload intent");
   expectStatus(await request("/payslips/upload-intents", { method: "POST", token: ownerLogin.payload.accessToken, body: { employeeId: employeeA.id, year: 2026, month: 9, originalFileName: "blocked.pdf", mimeType: "application/pdf", sizeBytes: firstPdf.length } }), 403, "empleado no genera upload intent");
   await upload(createIntent.payload, firstPdf);
@@ -107,11 +107,15 @@ async function run() {
 
   const ownList = await request("/me/payslips", { token: ownerLogin.payload.accessToken });
   expectStatus(ownList, 200, "propietario lista recibos propios");
-  assert.ok(ownList.payload.items.some((item) => item.id === createIntent.payload.payslipId), "el recibo activo aparece al propietario");
+  assert.ok(ownList.payload.items.some((item) => item.id === createIntent.payload.payslipId && item.unread && item.documentType === "NOTIFICATION"), "el recibo activo aparece como notificación nueva");
+  const unreadBeforeView = await request("/me/payslips/unread-count", { token: ownerLogin.payload.accessToken });
+  expectStatus(unreadBeforeView, 200, "contador de recibos nuevos");
+  assert.equal(unreadBeforeView.payload.count, 1, "la carga notificada incrementa el contador");
   const view = await request(`/payslips/${createIntent.payload.payslipId}/view`, { token: ownerLogin.payload.accessToken });
   const download = await request(`/payslips/${createIntent.payload.payslipId}/download`, { token: ownerLogin.payload.accessToken });
   expectStatus(view, 200, "propietario obtiene URL de vista");
   expectStatus(download, 200, "propietario obtiene URL de descarga");
+  assert.equal((await request("/me/payslips/unread-count", { token: ownerLogin.payload.accessToken })).payload.count, 0, "abrir el recibo marca la notificación como leída");
   assert.ok(view.payload.url && download.payload.url, "las URLs firmadas se devuelven sin persistirse");
   expectStatus(await request(`/payslips/${createIntent.payload.payslipId}/view`, { token: outsiderLogin.payload.accessToken }), 403, "empleado ajeno no accede al recibo");
 

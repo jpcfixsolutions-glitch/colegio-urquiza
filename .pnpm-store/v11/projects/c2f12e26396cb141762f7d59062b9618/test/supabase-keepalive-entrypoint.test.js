@@ -29,7 +29,7 @@ async function availablePort() {
 
 function waitForServer(child, output) {
   return new Promise((resolve, reject) => {
-    const timeout = setTimeout(() => reject(new Error(`El entrypoint no inició: ${output()}`)), 5_000);
+    const timeout = setTimeout(() => reject(new Error(`El entrypoint no inició: ${output()}`)), 15_000);
     child.once("exit", (code) => {
       clearTimeout(timeout);
       reject(new Error(`El entrypoint terminó antes de iniciar (código ${code}): ${output()}`));

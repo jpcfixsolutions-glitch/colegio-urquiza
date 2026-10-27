@@ -1,20 +1,16 @@
-.profile-onboarding { min-height: 100vh; display: grid; place-items: center; padding: 28px; background: #f8f9fa; border-top: 6px solid #1b2a4a; }
-.personal-profile-card { width: min(100%, 760px); }
-.personal-profile-card.required { box-shadow: 0 12px 35px #1b2a4a16; }
-.profile-heading h2, .profile-heading h3 { margin: 5px 0 8px; }
-.profile-heading > p:last-child { color: #526079; }
+.profile-onboarding { min-height: 100svh; display: grid; place-items: center; padding: 28px; background: linear-gradient(135deg, var(--gray-50), var(--blue-50)); }
+.personal-profile-card { width: min(100%, 790px); }
+.personal-profile-card.required { border-radius: var(--radius-xl); box-shadow: var(--shadow-md); }
+.profile-heading { margin-bottom: 20px; }
+.profile-heading h2, .profile-heading h3 { margin: 4px 0 8px; font-size: clamp(24px, 3vw, 31px); }
+.profile-heading > p:last-child { margin: 0; color: var(--gray-600); }
 .profile-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; }
 .profile-wide { grid-column: 1 / -1; }
-.profile-reminder { display: grid; gap: 5px; margin: 18px 0; padding: 14px; border-left: 4px solid #c9a227; background: #fff7db; color: #526079; }
-.profile-reminder strong { color: #1b2a4a; }
-.employee-form { width: min(100%, 860px); margin-bottom: 20px; }
-.employee-details { width: min(100%, 620px); }
-.employee-details dl { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.employee-details dl div { padding: 10px; background: #f8f9fa; }
-.employee-details dt { color: #6b7280; font: 600 10px 'JetBrains Mono'; text-transform: uppercase; }
-.employee-details dd { margin: 5px 0 0; overflow-wrap: anywhere; }
-
-@media (max-width: 700px) {
-  .profile-grid, .employee-details dl { grid-template-columns: 1fr; }
-  .profile-wide { grid-column: auto; }
-}
+.employee-form { width: 100%; }
+.employee-form .profile-heading { display: none; }
+.employee-details { width: min(100%, 650px); }
+.employee-details dl { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 0; }
+.employee-details dl div { border: 1px solid var(--gray-200); border-radius: var(--radius-sm); padding: 12px; background: var(--gray-50); }
+.employee-details dt { color: var(--gray-500); font-size: 10px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+.employee-details dd { margin: 5px 0 0; overflow-wrap: anywhere; color: var(--navy-950); font-weight: 550; }
+@media (max-width: 700px) { .profile-onboarding { padding: 0; place-items: stretch; } .profile-onboarding .personal-profile-card { min-height: 100svh; border: 0; border-radius: 0; padding: 24px 18px; } .profile-grid, .employee-details dl { grid-template-columns: 1fr; } .profile-wide { grid-column: auto; } }
