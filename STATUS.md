@@ -34,6 +34,9 @@
 - Corrección responsive móvil: la navegación lateral ahora es el área con
   scroll interno y el pie queda fijo dentro del drawer; el botón `Cerrar
   sesión` permanece visible aun con muchas entradas o una pantalla baja.
+- Ajuste específico para navegadores móviles: el drawer usa `100dvh` y reserva
+  52 px más el área segura inferior, de modo que el usuario y `Cerrar sesión`
+  queden por encima de la barra dinámica de Chrome/Samsung Internet.
 - Retención propuesta: conservar auditoría 12 meses y ejecutar una limpieza
   explícita/cron administrativo aprobado antes de eliminar datos; no se agregó
   ninguna eliminación automática.
