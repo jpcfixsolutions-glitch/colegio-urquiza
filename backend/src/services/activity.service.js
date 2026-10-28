@@ -44,9 +44,10 @@ export function presenceCutoff(now = new Date()) {
 export async function registerSessionActivity(sessionId, userId, now = new Date()) {
   if (!sessionId) return false;
   const cutoff = new Date(now.getTime() - PRESENCE_WRITE_THROTTLE_SECONDS * 1000);
+  const cutoffSeconds = Math.floor(cutoff.getTime() / 1000);
   const result = await db.update(authSessions).set({ lastActivityAt: now }).where(and(
     eq(authSessions.id, sessionId), eq(authSessions.userId, userId), isNull(authSessions.revokedAt),
-    gt(authSessions.expiresAt, now), sql`(${authSessions.lastActivityAt} IS NULL OR ${authSessions.lastActivityAt} < ${cutoff})`,
+    gt(authSessions.expiresAt, now), sql`(${authSessions.lastActivityAt} IS NULL OR ${authSessions.lastActivityAt} < ${cutoffSeconds})`,
   ));
   return Number(result.rowsAffected || 0) > 0;
 }
@@ -62,8 +63,9 @@ export async function onlineUsers(now = new Date()) {
   // backend anterior durante un despliegue gradual. Las sesiones actuales
   // siempre usan lastActivityAt; el respaldo vence en la misma ventana corta.
   const cutoff = presenceCutoff(now);
+  const cutoffSeconds = Math.floor(cutoff.getTime() / 1000);
   const sessions = await db.select({ userId: authSessions.userId, lastActivityAt: authSessions.lastActivityAt, createdAt: authSessions.createdAt })
-    .from(authSessions).where(and(isNull(authSessions.revokedAt), gt(authSessions.expiresAt, now), sql`coalesce(${authSessions.lastActivityAt}, ${authSessions.createdAt}) > ${cutoff}`));
+    .from(authSessions).where(and(isNull(authSessions.revokedAt), gt(authSessions.expiresAt, now), sql`coalesce(${authSessions.lastActivityAt}, ${authSessions.createdAt}) > ${cutoffSeconds}`));
   const latest = new Map();
   sessions.forEach(item => { const activityAt = item.lastActivityAt || item.createdAt; if (!latest.get(item.userId) || latest.get(item.userId) < activityAt) latest.set(item.userId, activityAt); });
   const ids = [...latest.keys()];

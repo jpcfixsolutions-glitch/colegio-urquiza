@@ -26,6 +26,11 @@
 - Durante un despliegue gradual, una sesión creada por la versión anterior se
   considera activa sólo durante la misma ventana de 180 s a partir de su login
   (`created_at`). Las sesiones nuevas usan exclusivamente `last_activity_at`.
+- Corrección posterior: las comparaciones SQL de presencia normalizan el corte
+  a segundos Unix antes de comparar con las columnas integer de Turso. Antes
+  se enviaba un `Date` serializado como texto, por lo que una sesión con
+  actividad real no aparecía en línea. La consulta corregida verificó en Turso
+  dos usuarios en línea, incluido Mateo Andrés.
 - Retención propuesta: conservar auditoría 12 meses y ejecutar una limpieza
   explícita/cron administrativo aprobado antes de eliminar datos; no se agregó
   ninguna eliminación automática.
