@@ -31,6 +31,9 @@
   se enviaba un `Date` serializado como texto, por lo que una sesión con
   actividad real no aparecía en línea. La consulta corregida verificó en Turso
   dos usuarios en línea, incluido Mateo Andrés.
+- Corrección responsive móvil: la navegación lateral ahora es el área con
+  scroll interno y el pie queda fijo dentro del drawer; el botón `Cerrar
+  sesión` permanece visible aun con muchas entradas o una pantalla baja.
 - Retención propuesta: conservar auditoría 12 meses y ejecutar una limpieza
   explícita/cron administrativo aprobado antes de eliminar datos; no se agregó
   ninguna eliminación automática.
