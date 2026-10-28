@@ -9,13 +9,14 @@ import { announcementAreas, announcementReads, announcements, areas, authSession
 import { authenticateJWT, requirePermission } from "../middlewares/auth.js";
 import { validate } from "../middlewares/validate.js";
 import { asyncHandler, ApiError } from "../utils/api-error.js";
-import { audit } from "../utils/audit.js";
+import { audit, auditForUser } from "../utils/audit.js";
 import { newSessionId, refreshExpiry, signAccessToken, signRefreshToken, verifyRefreshToken } from "../utils/tokens.js";
 import { getIdentity } from "../services/identity.service.js";
 import { changeOwnPassword, resetPasswordWithTemporaryCredential, updateUserAccountState } from "../services/user-security.service.js";
 import { buildPayslipPath, createPayslipDownloadUrl, createPayslipUploadUrl, createPayslipViewUrl, verifyPayslipObject } from "../services/storage.service.js";
 import { MARITAL_STATUSES, personalProfileDto } from "../services/personal-profile.service.js";
 import { normalizeCuit, parsePayslipFileName } from "../utils/payslip-file-name.js";
+import { accessHistory, activityStatistics, onlineUsers, PRESENCE_HEARTBEAT_SECONDS, PRESENCE_WINDOW_SECONDS, registerSessionActivity } from "../services/activity.service.js";
 
 const router = Router();
 const loginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 10, standardHeaders: true, legacyHeaders: false, message: { error: "Demasiados intentos. Intente más tarde." } });
@@ -54,9 +55,10 @@ export const refreshCookieOptions = (nodeEnv = process.env.NODE_ENV) => {
 const userDto = (identity) => ({ id: identity.id, email: identity.email, username: identity.username, employeeId: identity.employeeId, permissions: identity.permissions, roles: identity.roles, mustChangePassword: identity.mustChangePassword, profileComplete: identity.profileComplete, profileNeedsReview: identity.profileNeedsReview, profileUpdatedAt: identity.profileUpdatedAt, profileReviewDueAt: identity.profileReviewDueAt });
 async function issueSession(req, res, user) {
   const id = newSessionId(); const refresh = signRefreshToken(user.id, id);
-  await db.insert(authSessions).values({ id, userId: user.id, refreshTokenHash: hashToken(refresh), expiresAt: refreshExpiry(), ipAddress: req.ip, userAgent: req.get("user-agent") });
+  const now = new Date();
+  await db.insert(authSessions).values({ id, userId: user.id, refreshTokenHash: hashToken(refresh), expiresAt: refreshExpiry(), lastActivityAt: now, ipAddress: req.ip, userAgent: req.get("user-agent") });
   res.cookie("refresh_token", refresh, refreshCookieOptions());
-  return signAccessToken(user.id);
+  return signAccessToken(user.id, id);
 }
 function requirePasswordChange(req, res, next) {
   if (req.user.mustChangePassword) {
@@ -74,10 +76,13 @@ function requirePersonalProfile(req, res, next) {
 router.post("/auth/login", loginLimiter, validate(z.object({ body: z.object({ identifier: z.string().min(1), password: z.string().min(1) }) })), asyncHandler(async (req, res) => {
   const { identifier, password } = req.validated.body;
   const [user] = await db.select().from(users).where(or(sql`lower(${users.email}) = lower(${identifier})`, sql`lower(${users.username}) = lower(${identifier})`));
-  if (!user || !user.active || !(await bcrypt.compare(password, user.passwordHash))) throw new ApiError(401, "Usuario o contraseña incorrectos");
+  if (!user || !user.active || !(await bcrypt.compare(password, user.passwordHash))) {
+    await auditForUser(req, user?.id || null, "LOGIN_FAILED", "user", user?.id || null);
+    throw new ApiError(401, "Usuario o contraseña incorrectos");
+  }
   await db.update(users).set({ lastLoginAt: new Date(), updatedAt: new Date() }).where(eq(users.id, user.id));
   const identity = await getIdentity(user.id); const accessToken = await issueSession(req, res, user);
-  req.user = identity; await audit(req, "AUTH_LOGIN", "user", user.id);
+  req.user = identity; await audit(req, "LOGIN_SUCCESS", "user", user.id);
   res.json({ accessToken, user: userDto(identity) });
 }));
 router.post("/auth/refresh", asyncHandler(async (req, res) => {
@@ -89,8 +94,12 @@ router.post("/auth/refresh", asyncHandler(async (req, res) => {
   const identity = await getIdentity(payload.sub); if (!identity) throw new ApiError(401, "Usuario inactivo");
   const accessToken = await issueSession(req, res, identity); res.json({ accessToken, user: userDto(identity) });
 }));
-router.post("/auth/logout", asyncHandler(async (req, res) => { const token = req.cookies.refresh_token; if (token) await db.update(authSessions).set({ revokedAt: new Date() }).where(eq(authSessions.refreshTokenHash, hashToken(token))); res.clearCookie("refresh_token", refreshCookieOptions()); await audit(req, "AUTH_LOGOUT", "session"); res.status(204).end(); }));
+router.post("/auth/logout", asyncHandler(async (req, res) => { const token = req.cookies.refresh_token; let session; if (token) { [session] = await db.select({ id: authSessions.id, userId: authSessions.userId }).from(authSessions).where(eq(authSessions.refreshTokenHash, hashToken(token))); if (session) await db.update(authSessions).set({ revokedAt: new Date(), loggedOutAt: new Date() }).where(eq(authSessions.id, session.id)); } res.clearCookie("refresh_token", refreshCookieOptions()); await auditForUser(req, session?.userId || null, "LOGOUT", "session", session?.id || null); res.status(204).end(); }));
 router.get("/auth/me", authenticateJWT, (req, res) => res.json({ user: userDto(req.user) }));
+router.post("/activity/heartbeat", authenticateJWT, asyncHandler(async (req, res) => {
+  const updated = await registerSessionActivity(req.sessionId, req.user.id);
+  res.json({ ok: true, updated, heartbeatSeconds: PRESENCE_HEARTBEAT_SECONDS, presenceWindowSeconds: PRESENCE_WINDOW_SECONDS });
+}));
 router.post("/auth/change-password", authenticateJWT, validate(z.object({ body: z.object({ currentPassword: z.string().min(1), newPassword: z.string().min(12) }) })), asyncHandler(async (req, res) => { const { currentPassword, newPassword } = req.validated.body; await changeOwnPassword(req.user.id, currentPassword, newPassword); await audit(req, "PASSWORD_CHANGED", "user", req.user.id); res.status(204).end(); }));
 
 // El perfil y el cambio de contraseña quedan disponibles antes de este punto.
@@ -109,11 +118,16 @@ router.get("/employees", (req,res,next) => req.user.permissions.includes("EMPLOY
 router.post("/employees", requirePermission("EMPLOYEE_MANAGE"), validate(z.object({body:z.object({employeeNumber:z.string().min(1),cuit:cuitSchema,dni:dniSchema,personalEmail:optionalEmailSchema,address:optionalTextSchema(5,200),phone:optionalTextSchema(6,30),maritalStatus:optionalMaritalStatusSchema,firstName:z.string().min(1),lastName:z.string().min(1),areaIds:z.array(UUID).default([])})})), asyncHandler(async(req,res)=>{const {areaIds,...data}=req.validated.body;const item={id:randomUUID(),...data}; await db.insert(employees).values(item); if(areaIds.length) await db.insert(employeeAreas).values(areaIds.map(areaId=>({employeeId:item.id,areaId}))); await audit(req,"EMPLOYEE_CREATED","employee",item.id);res.status(201).json({item:{...item,areaIds}});}));
 router.patch("/employees/:id",requirePermission("EMPLOYEE_MANAGE"),validate(z.object({params:z.object({id:UUID}),body:z.object({employeeNumber:z.string().min(1).optional(),cuit:cuitSchema,dni:dniSchema,personalEmail:optionalEmailSchema,address:optionalTextSchema(5,200),phone:optionalTextSchema(6,30),maritalStatus:optionalMaritalStatusSchema,firstName:z.string().min(1).optional(),lastName:z.string().min(1).optional(),active:z.boolean().optional(),areaIds:z.array(UUID).optional()})})),asyncHandler(async(req,res)=>{const {areaIds,...data}=req.validated.body; await db.update(employees).set({...data,updatedAt:new Date()}).where(eq(employees.id,req.validated.params.id));if(areaIds){await db.delete(employeeAreas).where(eq(employeeAreas.employeeId,req.validated.params.id));if(areaIds.length)await db.insert(employeeAreas).values(areaIds.map(areaId=>({employeeId:req.validated.params.id,areaId})));}await audit(req,"EMPLOYEE_UPDATED","employee",req.validated.params.id);res.status(204).end();}));
 
-router.get("/users",requirePermission("USER_MANAGE"),asyncHandler(async(req,res)=>{const items=await db.select({id:users.id,email:users.email,username:users.username,active:users.active,mustChangePassword:users.mustChangePassword,employeeId:employees.id,employeeNumber:employees.employeeNumber,firstName:employees.firstName,lastName:employees.lastName}).from(users).leftJoin(employees,eq(employees.userId,users.id));const assignments=await db.select({userId:userRoles.userId,role:roles.name}).from(userRoles).innerJoin(roles,eq(userRoles.roleId,roles.id));res.json({items:items.map(i=>({...i,roles:assignments.filter(a=>a.userId===i.id).map(a=>a.role)}))});}));
+router.get("/users",requirePermission("USER_MANAGE"),asyncHandler(async(req,res)=>{const items=await db.select({id:users.id,email:users.email,username:users.username,active:users.active,mustChangePassword:users.mustChangePassword,employeeId:employees.id,employeeNumber:employees.employeeNumber,firstName:employees.firstName,lastName:employees.lastName}).from(users).leftJoin(employees,eq(employees.userId,users.id));const assignments=await db.select({userId:userRoles.userId,role:roles.name}).from(userRoles).innerJoin(roles,eq(userRoles.roleId,roles.id));const presence=new Map((await onlineUsers()).map(item=>[item.id,item.lastActivityAt]));res.json({items:items.map(i=>({...i,roles:assignments.filter(a=>a.userId===i.id).map(a=>a.role),online:presence.has(i.id),lastActivityAt:presence.get(i.id)||null}))});}));
 router.post("/users",requirePermission("USER_MANAGE"),validate(z.object({body:z.object({email:z.string().email(),username:z.string().min(3).max(60).optional(),password:z.string().min(12),employeeId:UUID.optional(),roleIds:z.array(UUID).min(1)})})),asyncHandler(async(req,res)=>{const {password,employeeId,roleIds,...data}=req.validated.body;const id=randomUUID();await db.insert(users).values({id,...data,passwordHash:await bcrypt.hash(password,12),mustChangePassword:true});if(employeeId)await db.update(employees).set({userId:id,updatedAt:new Date()}).where(eq(employees.id,employeeId));await db.insert(userRoles).values(roleIds.map(roleId=>({userId:id,roleId})));await audit(req,"USER_CREATED","user",id);res.status(201).json({id});}));
-router.patch("/users/:id",requirePermission("USER_MANAGE"),validate(z.object({params:z.object({id:UUID}),body:z.object({active:z.boolean().optional(),employeeId:UUID.nullable().optional(),roleIds:z.array(UUID).optional(),forcePasswordChange:z.boolean().optional()})})),asyncHandler(async(req,res)=>{const {employeeId,roleIds,active,forcePasswordChange}=req.validated.body;await updateUserAccountState(req.validated.params.id,{active,forcePasswordChange});if(employeeId!==undefined){await db.update(employees).set({userId:null}).where(eq(employees.userId,req.validated.params.id));if(employeeId)await db.update(employees).set({userId:req.validated.params.id}).where(eq(employees.id,employeeId));}if(roleIds){await db.delete(userRoles).where(eq(userRoles.userId,req.validated.params.id));if(roleIds.length)await db.insert(userRoles).values(roleIds.map(roleId=>({userId:req.validated.params.id,roleId})));}await audit(req,"USER_UPDATED","user",req.validated.params.id);res.status(204).end();}));
-router.post("/users/:id/reset-password",requirePermission("USER_MANAGE"),validate(z.object({params:z.object({id:UUID}),body:z.object({temporaryPassword:z.string().min(12)})})),asyncHandler(async(req,res)=>{const {temporaryPassword}=req.validated.body;const userId=req.validated.params.id;await resetPasswordWithTemporaryCredential(userId,temporaryPassword);await audit(req,"USER_PASSWORD_RESET","user",userId);res.status(204).end();}));
+router.patch("/users/:id",requirePermission("USER_MANAGE"),validate(z.object({params:z.object({id:UUID}),body:z.object({active:z.boolean().optional(),employeeId:UUID.nullable().optional(),roleIds:z.array(UUID).optional(),forcePasswordChange:z.boolean().optional()})})),asyncHandler(async(req,res)=>{const {employeeId,roleIds,active,forcePasswordChange}=req.validated.body;await updateUserAccountState(req.validated.params.id,{active,forcePasswordChange});if(employeeId!==undefined){await db.update(employees).set({userId:null}).where(eq(employees.userId,req.validated.params.id));if(employeeId)await db.update(employees).set({userId:req.validated.params.id}).where(eq(employees.id,employeeId));}if(roleIds){await db.delete(userRoles).where(eq(userRoles.userId,req.validated.params.id));if(roleIds.length)await db.insert(userRoles).values(roleIds.map(roleId=>({userId:req.validated.params.id,roleId})));}if(active===false)await auditForUser(req,req.validated.params.id,"SESSION_REVOKED","user",req.validated.params.id,{reason:"account_deactivated"});await audit(req,"USER_UPDATED","user",req.validated.params.id);res.status(204).end();}));
+router.post("/users/:id/reset-password",requirePermission("USER_MANAGE"),validate(z.object({params:z.object({id:UUID}),body:z.object({temporaryPassword:z.string().min(12)})})),asyncHandler(async(req,res)=>{const {temporaryPassword}=req.validated.body;const userId=req.validated.params.id;await resetPasswordWithTemporaryCredential(userId,temporaryPassword);await auditForUser(req,userId,"SESSION_REVOKED","user",userId,{reason:"password_reset"});await audit(req,"USER_PASSWORD_RESET","user",userId);res.status(204).end();}));
 router.get("/roles",requirePermission("USER_MANAGE"),asyncHandler(async(req,res)=>res.json({items:await db.select().from(roles),permissions:await db.select().from(permissions)})));
+
+const activityQuerySchema = z.object({ query: z.object({ q: z.string().max(120).optional(), from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(), to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(), event: z.enum(["LOGIN_SUCCESS", "LOGIN_FAILED", "LOGOUT", "SESSION_REVOKED"]).optional(), role: z.string().max(80).optional(), page: z.coerce.number().int().min(1).max(100000).default(1), pageSize: z.coerce.number().int().min(1).max(100).default(25) }).refine(query => !query.from || !query.to || query.from <= query.to, { message: "El rango de fechas no es válido", path: ["to"] }) });
+router.get("/admin/activity/stats", requirePermission("AUDIT_VIEW"), asyncHandler(async (req, res) => res.json(await activityStatistics())));
+router.get("/admin/activity/online", requirePermission("AUDIT_VIEW"), asyncHandler(async (req, res) => res.json({ items: await onlineUsers(), presenceWindowSeconds: PRESENCE_WINDOW_SECONDS })));
+router.get("/admin/activity/history", requirePermission("AUDIT_VIEW"), validate(activityQuerySchema), asyncHandler(async (req, res) => res.json(await accessHistory(req.validated.query))));
 
 const uploadSchema=z.object({employeeId:UUID,year:z.number().int().min(2000).max(2100),month:z.number().int().min(1).max(12),documentType:z.enum(payslipDocumentTypes).default("SALARY"),title:z.string().max(200).optional(),notifyUser:z.boolean().default(false),originalFileName:z.string().regex(/\.pdf$/i),mimeType:z.literal("application/pdf"),sizeBytes:z.number().int().positive().max(10*1024*1024),sha256:z.string().regex(/^[a-f0-9]{64}$/i).optional()});
 const bulkItemSchema=uploadSchema.extend({clientId:z.string().min(1).max(100)});

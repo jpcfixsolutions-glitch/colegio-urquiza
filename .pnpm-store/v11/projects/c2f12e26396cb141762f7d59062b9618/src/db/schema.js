@@ -104,6 +104,16 @@ export const authSessions = sqliteTable(
             mode: "timestamp",
         }),
 
+        // Instantes UTC. La presencia se calcula por sesión, no por usuario,
+        // para no desconectar a alguien que todavía usa otro dispositivo.
+        lastActivityAt: integer("last_activity_at", {
+            mode: "timestamp",
+        }),
+
+        loggedOutAt: integer("logged_out_at", {
+            mode: "timestamp",
+        }),
+
         ipAddress: text("ip_address"),
 
         userAgent: text("user_agent"),
@@ -119,6 +129,9 @@ export const authSessions = sqliteTable(
 
         index("auth_sessions_expires_idx")
             .on(table.expiresAt),
+
+        index("auth_sessions_activity_idx")
+            .on(table.lastActivityAt),
     ]
 );
 

@@ -1,5 +1,38 @@
 # Estado actual
 
+## Monitoreo de usuarios e historial de accesos — 2026-10-27
+
+- Se reutilizaron `auth_sessions` y `audit_logs`; no se creó una tabla
+  duplicada. La migración versionada `20261028012202_activity_monitoring` fue
+  aplicada en Turso: agrega `last_activity_at`, `logged_out_at` e índice de
+  actividad por sesión.
+- El access token ahora contiene el identificador de sesión y cada ruta
+  autenticada valida que la sesión siga vigente y no revocada. Login, logout,
+  fallos de login y revocaciones escriben eventos seguros en auditoría como
+  `LOGIN_SUCCESS`, `LOGIN_FAILED`, `LOGOUT` y `SESSION_REVOKED`; el refresh no
+  se registra como un nuevo ingreso.
+- Se agregó heartbeat autenticado: el frontend lo envía como máximo cada 60 s,
+  sólo cuando la página está visible y hubo interacción reciente. Las pestañas
+  del mismo origen se coordinan con `localStorage` y el backend descarta
+  escrituras repetidas durante 45 s. Una sesión se considera en línea por 180
+  s desde su última actividad; múltiples sesiones del mismo usuario se agregan
+  sin desconectarlo antes de tiempo.
+- Administración incluye estadísticas reales, navegación `Actividad`, lista de
+  conexiones y un historial paginado y filtrable. `Usuarios` recibe la
+  presencia en una única consulta agregada, sin N+1 por fila.
+- Timestamps nuevos usan UTC de servidor. Los filtros por día convierten el
+  calendario `America/Argentina/Cordoba` a límites UTC y la UI muestra siempre
+  esa zona mediante `Intl.DateTimeFormat`, sin restar horas manualmente.
+- Durante un despliegue gradual, una sesión creada por la versión anterior se
+  considera activa sólo durante la misma ventana de 180 s a partir de su login
+  (`created_at`). Las sesiones nuevas usan exclusivamente `last_activity_at`.
+- Retención propuesta: conservar auditoría 12 meses y ejecutar una limpieza
+  explícita/cron administrativo aprobado antes de eliminar datos; no se agregó
+  ninguna eliminación automática.
+- Verificaciones: migración aplicada; `pnpm test` backend (18/18), `pnpm
+  e2e:auth` contra Turso con limpieza, `pnpm test` frontend (4/4) y `pnpm
+  build` frontend pasaron.
+
 ## Implementado
 
 - Onboarding de empleados en dos etapas: primero cambio obligatorio de

@@ -273,6 +273,8 @@ p { line-height: 1.62; }
 .pagination button { min-height: 36px; border: 1px solid var(--gray-300); border-radius: 7px; padding: 7px 11px; background: var(--white); cursor: pointer; }
 .pagination button:disabled { opacity: .45; }
 .pagination span { color: var(--gray-500); font-size: 12px; }
+.activity-summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 0 0 14px; border: 1px solid var(--gray-200); border-radius: var(--radius-md); padding: 12px 14px; background: var(--white); color: var(--gray-500); box-shadow: var(--shadow-sm); }
+.activity-filters { margin-bottom: 16px; }
 .file-drop { position: relative; display: flex; align-items: center; gap: 12px; border: 1px dashed #aeb9c8; border-radius: var(--radius-md); padding: 20px; background: var(--gray-50); color: var(--navy-800); }
 .file-drop span { display: grid; }
 .file-drop small { color: var(--gray-500); }
@@ -395,6 +397,7 @@ p { line-height: 1.62; }
   .metric-arrow { display: none; }
   .history-filter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .history-filter-grid .search-field { grid-column: 1 / -1; }
+  .activity-summary { align-items: flex-start; flex-direction: column; }
   .segmented-control { width: 100%; overflow-x: auto; }
   .segmented-control button { flex: 0 0 auto; }
   .announcement-admin-card { grid-template-columns: 1fr; }
