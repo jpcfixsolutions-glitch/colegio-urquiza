@@ -72,11 +72,13 @@ async function createUser({ name, active = true, mustChangePassword = false, rol
   if (selectedRoles.length !== roleNames.length) fail("faltan roles; ejecute pnpm seed antes del E2E");
   await db.insert(userRoles).values(selectedRoles.map((role) => ({ userId: id, roleId: role.id })));
   let employeeId = null;
+  let cuit = null;
   if (linkEmployee) {
     employeeId = randomUUID();
-    await db.insert(employees).values({ id: employeeId, userId: id, employeeNumber: `E2EAUTH-${name}`, firstName: "Perfil", lastName: "Prueba" });
+    cuit = "20309990019";
+    await db.insert(employees).values({ id: employeeId, userId: id, employeeNumber: `E2EAUTH-${name}`, cuit, firstName: "Perfil", lastName: "Prueba" });
   }
-  return { id, employeeId, identifier: `${prefix}${name}` };
+  return { id, employeeId, identifier: cuit || `${prefix}${name}` };
 }
 
 async function startServer() {
@@ -100,13 +102,15 @@ async function run() {
   await startServer();
 
   expectStatus(await request("/auth/login", { method: "POST", body: { identifier: employee.identifier, password: "incorrecta" } }), 401, "rechaza contraseña inválida");
+  expectStatus(await request("/auth/login", { method: "POST", body: { identifier: `${prefix}employee`, password } }), 401, "una cuenta vinculada a CUIT ya no ingresa por username");
   expectStatus(await request("/auth/login", { method: "POST", body: { identifier: inactive.identifier, password } }), 401, "rechaza usuario inactivo");
 
-  const login = await request("/auth/login", { method: "POST", body: { identifier: employee.identifier.toUpperCase(), password } });
-  expectStatus(login, 200, "acepta login válido sin distinguir mayúsculas");
+  const login = await request("/auth/login", { method: "POST", body: { identifier: "20-30999001-9", password } });
+  expectStatus(login, 200, "acepta login válido con CUIT y separadores");
   assert.ok(login.payload.accessToken, "login debe devolver access token");
   assert.ok(login.cookie, "login debe configurar refresh cookie");
   assert.equal(login.payload.user.mustChangePassword, true, "debe informar cambio obligatorio");
+  assert.equal(login.payload.user.cuit, employee.identifier, "la sesión queda asociada al CUIT del empleado");
 
   expectStatus(await request("/auth/me", { token: login.payload.accessToken }), 200, "permite consultar perfil antes de cambiar contraseña");
   expectStatus(await request("/announcements", { token: login.payload.accessToken }), 403, "bloquea recursos hasta cambiar contraseña");

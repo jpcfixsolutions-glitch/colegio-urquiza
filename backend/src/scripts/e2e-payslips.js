@@ -70,7 +70,7 @@ async function createUser(name, roleName, employee) {
   await db.insert(users).values({ id, email: `${prefix}${name}@example.test`, username: `${prefix}${name}`, passwordHash: await bcrypt.hash(password, 12), mustChangePassword: false });
   if (employee) await db.update(employees).set({ userId: id }).where(eq(employees.id, employee.id));
   await db.insert(userRoles).values({ userId: id, roleId: role.id });
-  return { id, identifier: `${prefix}${name}` };
+  return { id, identifier: employee?.cuit || `${prefix}${name}` };
 }
 
 async function startServer() {
@@ -80,8 +80,8 @@ async function startServer() {
 
 async function run() {
   await clean();
-  const employeeA = { id: randomUUID() };
-  const employeeB = { id: randomUUID() };
+  const employeeA = { id: randomUUID(), cuit: "20309990035", dni: "30999003", personalEmail: "e2e.owner@example.test", address: "Calle E2E 123", phone: "3515550001", maritalStatus: "SINGLE", profileUpdatedAt: new Date() };
+  const employeeB = { id: randomUUID(), cuit: "20309990043", dni: "30999004", personalEmail: "e2e.outsider@example.test", address: "Calle E2E 456", phone: "3515550002", maritalStatus: "SINGLE", profileUpdatedAt: new Date() };
   await db.insert(employees).values([
     { ...employeeA, employeeNumber: "E2EPAY-001", firstName: "Recibo", lastName: "Propio" },
     { ...employeeB, employeeNumber: "E2EPAY-002", firstName: "Recibo", lastName: "Ajeno" },

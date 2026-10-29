@@ -325,6 +325,33 @@ registrados arriba.
   HTTP de Supabase.
 - Verificación: `pnpm test` en `backend` pasó (7/7).
 
+## Acceso por CUIT y vinculación de recibos (2026-10-28)
+
+- Las cuentas vinculadas a empleados ahora inician sesión con el CUIT único del
+  empleado, aceptando el valor con o sin guiones. Una cuenta que ya tiene CUIT
+  no puede seguir autenticándose por email o username. Se mantiene únicamente
+  una compatibilidad transitoria por email/username para cuentas administrativas
+  históricas que todavía no tienen empleado/CUIT asociado.
+- El campo de acceso aplica una máscara progresiva `XX-XXXXXXXX-X`: conserva
+  sólo los once dígitos, agrega ambos guiones automáticamente y admite pegar un
+  CUIT ya formateado. El email administrativo transitorio continúa admitido.
+- Toda cuenta nueva creada desde administración exige un empleado activo con
+  CUIT válido y sin otra cuenta asociada. La contraseña entregada por el
+  administrador continúa marcándose como temporal y obliga a cambiarla antes
+  de completar los datos personales o acceder al resto del sistema.
+- El CUIT se muestra como identificador de acceso en la administración y queda
+  bloqueado en el perfil del empleado una vez asociado. Los perfiles históricos
+  sin CUIT pueden informarlo una única vez; los cambios posteriores quedan
+  reservados a administración.
+- `Mis recibos` conserva la autorización contextual por `employeeId`, que es el
+  empleado único resuelto desde el CUIT de la cuenta, y sólo lista recibos en
+  estado `ACTIVE`. Administradores y responsables de nómina continúan cargando
+  y publicando mediante `PAYSLIP_MANAGE`.
+- Verificaciones: backend `pnpm test` pasó 18/18, frontend `pnpm test` pasó 4/4
+  y `pnpm build` pasó. Las E2E `pnpm e2e:auth`, `pnpm e2e:admin` y
+  `pnpm e2e:payslips` pasaron contra Turso/Supabase y limpiaron sus datos y
+  objetos temporales.
+
 ## Preparación de workspace para Vercel (2026-10-27)
 
 - Se corrigieron `backend/pnpm-workspace.yaml` y
