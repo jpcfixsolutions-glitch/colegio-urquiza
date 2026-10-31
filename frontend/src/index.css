@@ -265,8 +265,26 @@ p { line-height: 1.62; }
 .filter-panel { margin-bottom: 14px; border: 1px solid var(--gray-200); border-radius: var(--radius-md); padding: 15px; background: var(--white); box-shadow: var(--shadow-sm); }
 .filter-panel-heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
 .filter-panel-heading > div { display: flex; align-items: center; gap: 7px; color: var(--navy-900); }
-.history-filter-grid { display: grid; grid-template-columns: minmax(210px, 1.6fr) repeat(5, minmax(112px, 1fr)); align-items: end; gap: 9px; }
+.history-filter-grid { display: grid; grid-template-columns: minmax(210px, 1.6fr) repeat(6, minmax(112px, 1fr)); align-items: end; gap: 9px; }
 .history-filter-grid .search-field { width: 100%; align-self: end; }
+.payslip-stats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin: 0 0 18px; }
+.payslip-stats > div { display: grid; gap: 3px; border: 1px solid var(--gray-200); border-radius: var(--radius-md); padding: 15px; background: var(--white); box-shadow: var(--shadow-sm); }
+.payslip-stats strong { color: var(--navy-900); font: 700 24px var(--font-display); }
+.payslip-stats span { color: var(--gray-600); font-size: 12px; }
+.view-status { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 650; white-space: nowrap; }
+.view-status.viewed { color: #1976ba; }
+.view-status.unviewed { color: var(--gray-600); }
+.access-detail > p { margin-top: 0; color: var(--gray-600); }
+.access-version { margin-top: 12px; border: 1px solid var(--gray-200); border-radius: var(--radius-sm); padding: 14px; }
+.access-version > strong { color: var(--navy-900); }
+.access-version dl { display: grid; grid-template-columns: minmax(160px, 1fr) minmax(0, 1.3fr); gap: 7px 14px; margin: 13px 0 0; }
+.access-version dt { color: var(--gray-600); font-size: 12px; }
+.access-version dd { margin: 0; color: var(--gray-950); font-weight: 600; }
+.receipt-access-note { display: inline-flex; align-items: center; gap: 4px; margin-top: 6px; color: #1976ba; font-weight: 650; }
+.pdf-viewer-modal { width: min(100%, 1080px); }
+.viewer-loading { min-height: 420px; display: grid; place-content: center; gap: 12px; justify-items: center; color: var(--gray-600); }
+.viewer-help { margin: 0 0 12px; color: var(--gray-600); font-size: 12px; }
+.pdf-viewer { width: 100%; height: min(70svh, 760px); display: block; border: 1px solid var(--gray-200); border-radius: var(--radius-sm); background: var(--gray-50); }
 .list-heading { display: flex; justify-content: space-between; margin: 18px 0 9px; color: var(--gray-500); font-size: 12px; }
 .list-heading strong { color: var(--navy-900); }
 .pagination { display: flex; align-items: center; justify-content: flex-end; gap: 12px; margin-top: 16px; }
@@ -355,6 +373,7 @@ p { line-height: 1.62; }
 @media (max-width: 1180px) {
   .metrics-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .history-filter-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .payslip-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .history-filter-grid .search-field { grid-column: span 2; }
 }
 
@@ -423,6 +442,8 @@ p { line-height: 1.62; }
   .personal-receipt-card { grid-template-columns: auto minmax(0, 1fr); }
   .personal-receipt-actions { grid-column: 1 / -1; }
   .personal-receipt-actions .btn { flex: 1; }
+  .access-version dl { grid-template-columns: 1fr; gap: 2px; }
+  .access-version dd { margin-bottom: 8px; }
   .employee-header { padding-inline: 16px; }
   .employee-brand small { display: none; }
   .employee-nav { justify-content: flex-start; overflow-x: auto; }
@@ -438,7 +459,7 @@ p { line-height: 1.62; }
   .topbar-title span { display: none; }
   .topbar-title strong { font-size: 15px; }
   .page-heading h1 { font-size: 27px; }
-  .metrics-grid { grid-template-columns: 1fr; }
+  .metrics-grid, .payslip-stats { grid-template-columns: 1fr; }
   .history-filter-grid { grid-template-columns: 1fr; }
   .history-filter-grid .search-field { grid-column: auto; }
   .section-tabs button { flex: 1; justify-content: center; padding-inline: 8px; font-size: 12px; }

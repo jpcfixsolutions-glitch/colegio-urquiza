@@ -653,6 +653,67 @@ export const payslipVersions = sqliteTable(
     ]
 );
 
+// ======================================================
+// PAYSLIP VERSION ACCESS
+// Un registro agregado por versión y usuario propietario. Conserva la primera
+// apertura y descarga sin confundirlas con el estado administrativo del recibo.
+// ======================================================
+
+export const payslipVersionAccesses = sqliteTable(
+    "payslip_version_accesses",
+    {
+        payslipVersionId: text("payslip_version_id")
+            .notNull()
+            .references(() => payslipVersions.id, { onDelete: "restrict" }),
+
+        userId: text("user_id")
+            .notNull()
+            .references(() => users.id, { onDelete: "restrict" }),
+
+        employeeId: text("employee_id")
+            .notNull()
+            .references(() => employees.id, { onDelete: "restrict" }),
+
+        firstViewedAt: integer("first_viewed_at", { mode: "timestamp" }),
+        lastViewedAt: integer("last_viewed_at", { mode: "timestamp" }),
+        viewCount: integer("view_count").notNull().default(0),
+
+        firstDownloadRequestedAt: integer("first_download_requested_at", { mode: "timestamp" }),
+        lastDownloadRequestedAt: integer("last_download_requested_at", { mode: "timestamp" }),
+        downloadRequestCount: integer("download_request_count").notNull().default(0),
+    },
+    (table) => [
+        primaryKey({ columns: [table.payslipVersionId, table.userId] }),
+        index("payslip_version_accesses_employee_idx").on(table.employeeId),
+        index("payslip_version_accesses_viewed_idx").on(table.firstViewedAt),
+    ]
+);
+
+// Una sesión de visor se crea al solicitar la vista y se consume una sola vez
+// cuando el iframe controlado por la aplicación termina de cargar la respuesta.
+export const payslipViewSessions = sqliteTable(
+    "payslip_view_sessions",
+    {
+        id: text("id").primaryKey(),
+        payslipId: text("payslip_id")
+            .notNull()
+            .references(() => payslips.id, { onDelete: "restrict" }),
+        payslipVersionId: text("payslip_version_id")
+            .notNull()
+            .references(() => payslipVersions.id, { onDelete: "restrict" }),
+        userId: text("user_id")
+            .notNull()
+            .references(() => users.id, { onDelete: "restrict" }),
+        expiresAt: integer("expires_at", { mode: "timestamp" }).notNull(),
+        confirmedAt: integer("confirmed_at", { mode: "timestamp" }),
+        createdAt: createdAt(),
+    },
+    (table) => [
+        index("payslip_view_sessions_lookup_idx").on(table.id, table.userId, table.expiresAt),
+        index("payslip_view_sessions_version_idx").on(table.payslipVersionId),
+    ]
+);
+
 
 // ======================================================
 // ANNOUNCEMENTS

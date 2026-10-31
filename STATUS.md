@@ -1,5 +1,58 @@
 # Estado actual
 
+## Corrección UAT — visto de recibos en celular y despliegue — 2026-10-31
+
+- La revisión de Turso confirmó que el usuario Mateo Andrés había abierto el
+  recibo con el frontend anterior: existían eventos históricos de URL/vista,
+  pero no se había creado ninguna `payslip_view_session` ni ningún acceso por
+  versión. La implementación completa seguía fuera del último commit, por lo
+  que frontend y backend desplegados no compartían el contrato nuevo.
+- El visor dejó de depender de `iframe.onload`, señal inconsistente en visores
+  PDF de navegadores móviles. Ahora el frontend descarga el archivo firmado,
+  valida respuesta HTTP, contenido no vacío y firma `%PDF-`, confirma la sesión
+  autenticada y recién entonces muestra un `blob:` local en el visor.
+- Si Storage falla o responde con HTML/otro contenido, no se confirma el visto
+  y se muestra el error. Las URLs firmadas siguen siendo efímeras y nunca se
+  persisten. Los object URLs se revocan al cerrar o desmontar el visor.
+- La sesión de confirmación se amplió a cinco minutos para conexiones móviles
+  lentas, manteniendo consumo único, usuario propietario y versión inmutables.
+- Se agregó `frontend/src/features/payslipViewer.js` y su regresión para PDF
+  válido, error de Storage y contenido inválido.
+- Verificaciones: frontend `pnpm test` (9/9) y `pnpm build`; backend `pnpm
+  test` (21/21); `pnpm e2e:payslips` contra Turso/Supabase con limpieza,
+  reemplazo, concurrencia, archivado y filtros administrativos, todas correctas.
+
+## Seguimiento de visualización de recibos — 2026-10-29
+
+- Se creó y aplicó en Turso la migración versionada
+  `20261029211100_clean_ogun`. Agrega `payslip_version_accesses`, con una
+  fila por versión y usuario propietario, y `payslip_view_sessions`, que
+  vincula una apertura autorizada con una confirmación única de visor.
+- La primera y última visualización, contador de aperturas, primera y última
+  solicitud de descarga y contador de descargas se conservan por versión. Los
+  upserts son atómicos y completan correctamente cada dimensión aunque el
+  usuario descargue antes de visualizar o viceversa.
+- El empleado abre los PDFs en un visor embebido controlado por la aplicación.
+  Sólo al recibir `onLoad` de ese visor se confirma una sesión efímera
+  autenticada; generar una URL firmada, listar el recibo o abrirlo como
+  administrador no registra una visualización. El indicador representa que el
+  navegador cargó la respuesta del PDF, no una confirmación de lectura humana.
+- La solicitud de descarga se registra por separado y no cambia el estado de
+  visualización. Administradores no pueden crear sesiones de visualización en
+  nombre del empleado.
+- El historial administrativo ahora pagina y filtra del lado del backend por
+  empleado, período, tipo, estado y visualización. Muestra indicador accesible
+  de doble check, estadísticas calculadas en Turso y un detalle por versión con
+  fechas en `America/Argentina/Cordoba`. Los totales de publicados incluyen
+  documentos ACTIVE y ARCHIVED, nunca versiones reemplazadas ni PENDING.
+- Al reemplazar, la versión anterior conserva sus accesos y la nueva inicia sin
+  visualizaciones. Una confirmación tardía se asocia sólo a la versión antigua,
+  por lo que jamás marca la versión vigente por error. Archivar y desarchivar
+  no modifica los registros.
+- Verificaciones: `pnpm migrate`, `pnpm e2e:payslips` contra Turso y Supabase
+  Storage con limpieza, `pnpm test` backend (21/21), y `pnpm build` más
+  `pnpm test` frontend (7/7) correctos.
+
 ## Monitoreo de usuarios e historial de accesos — 2026-10-27
 
 - Se reutilizaron `auth_sessions` y `audit_logs`; no se creó una tabla
