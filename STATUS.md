@@ -1,5 +1,19 @@
 # Estado actual
 
+## Ajuste UAT — contraseña mínima de seis caracteres — 2026-11-01
+
+- La longitud mínima de contraseña pasó de 12 a 6 caracteres en el cambio
+  obligatorio del usuario, la creación de cuentas, el restablecimiento
+  administrativo y el bootstrap inicial de administrador.
+- El frontend aplica el mismo mínimo y actualiza las ayudas visibles de los
+  tres formularios. El costo de hash bcrypt se mantiene en 12 rondas; ese
+  parámetro criptográfico no corresponde a la longitud de la contraseña.
+- No hubo cambios de schema ni migraciones. Verificaciones: backend `pnpm test`
+  (21/21), frontend `pnpm test` (12/12) y `pnpm build`. La E2E específica
+  rechazó cinco caracteres, aceptó seis, verificó el hash y el login posterior,
+  y confirmó la limpieza de todos los usuarios temporales. Un primer intento
+  tuvo timeout de conexión con Turso; el reintento completo finalizó correcto.
+
 ## Corrección UAT — visor de recibos integrado en celular — 2026-11-01
 
 - Se reemplazó el `iframe` del recibo, que en navegadores móviles delegaba al

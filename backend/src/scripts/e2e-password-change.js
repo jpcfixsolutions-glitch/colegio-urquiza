@@ -17,8 +17,8 @@ const { auditLogs, authSessions, roles, userRoles, users } = await import("../db
 const prefix = "e2e_password_change_";
 const adminPassword = "E2ePasswordChangeAdmin!2026";
 const initialPassword = "E2ePasswordChangeInitial!2026";
-const temporaryPassword = "E2ePasswordChangeTemporary!2026";
-const newPassword = "E2ePasswordChangeNew!2026";
+const temporaryPassword = "T1m2p3";
+const newPassword = "N1e2w3";
 let server;
 let baseUrl;
 
@@ -96,8 +96,13 @@ async function run() {
   expectStatus(await request("/auth/change-password", {
     method: "POST",
     token: temporaryLogin.payload.accessToken,
+    body: { currentPassword: temporaryPassword, newPassword: "A1b2c" },
+  }), 422, "rechaza una contraseña de cinco caracteres");
+  expectStatus(await request("/auth/change-password", {
+    method: "POST",
+    token: temporaryLogin.payload.accessToken,
     body: { currentPassword: temporaryPassword, newPassword },
-  }), 204, "cambio obligatorio de contraseña");
+  }), 204, "acepta una contraseña de seis caracteres");
 
   const afterChange = await storedUser(userId);
   assert.equal(await bcrypt.compare(temporaryPassword, afterChange.passwordHash), false, "el hash persistido rechaza la temporal después del cambio");
