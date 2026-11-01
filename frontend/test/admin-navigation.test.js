@@ -15,10 +15,10 @@ test("un liquidador vinculado a un empleado conserva sus vistas personales", () 
   assert.ok(ids.includes("receipts"));
 });
 
-test("una cuenta administrativa sin empleado no recibe secciones personales", () => {
+test("un administrador de avisos vinculado conserva vistas personales y no recibe otras secciones administrativas", () => {
   const items = buildAdminNavigation({
-    employeeId: null,
-    permissions: ["PAYSLIP_MANAGE", "USER_MANAGE"],
+    employeeId: "employee-2",
+    permissions: ["PAYSLIP_VIEW_OWN", "ANNOUNCEMENT_VIEW", "ANNOUNCEMENT_PUBLISH", "ANNOUNCEMENT_MANAGE"],
   });
-  assert.deepEqual(items.map(([id]) => id), ["dashboard", "receipts", "users"]);
+  assert.deepEqual(items.map(([id]) => id), ["dashboard", "my-announcements", "my-receipts", "my-profile", "announcements"]);
 });

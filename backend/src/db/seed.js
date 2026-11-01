@@ -54,12 +54,28 @@ const ROLES = [
         description: "Administrador general de la aplicación",
     },
     {
+        name: "ADMINISTRATOR",
+        description: "Rol interno que identifica una cuenta administrativa sin privilegios",
+    },
+    {
         name: "PAYROLL_MANAGER",
         description: "Responsable de gestionar recibos de sueldo",
     },
     {
         name: "COMMUNICATION_MANAGER",
         description: "Responsable de publicar y administrar avisos",
+    },
+    {
+        name: "EMPLOYEE_MANAGER",
+        description: "Rol interno para la gestión de empleados y áreas",
+    },
+    {
+        name: "USER_MANAGER",
+        description: "Rol interno para la gestión de cuentas y accesos",
+    },
+    {
+        name: "AUDIT_READER",
+        description: "Rol interno para la consulta de auditoría",
     },
 ];
 
@@ -80,6 +96,18 @@ const ROLE_PERMISSIONS = {
         "ANNOUNCEMENT_VIEW",
         "ANNOUNCEMENT_PUBLISH",
         "ANNOUNCEMENT_MANAGE",
+    ],
+
+    EMPLOYEE_MANAGER: [
+        "EMPLOYEE_MANAGE",
+    ],
+
+    USER_MANAGER: [
+        "USER_MANAGE",
+    ],
+
+    AUDIT_READER: [
+        "AUDIT_VIEW",
     ],
 
     ADMIN: [

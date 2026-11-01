@@ -87,17 +87,17 @@ async function run() {
   const roleList = await request("/roles", { token });
   expectStatus(roleList, 200, "consulta roles");
   const roleId = (name) => roleList.payload.items.find((role) => role.name === name).id;
-  const createdUser = await request("/users", { method: "POST", token, body: { email: `${prefix}staff@example.test`, username: `${prefix}staff`, password: adminPassword, employeeId: employee.payload.item.id, roleIds: [roleId("EMPLOYEE")] } });
+  const createdUser = await request("/users", { method: "POST", token, body: { email: `${prefix}staff@example.test`, username: `${prefix}staff`, password: adminPassword, employeeId: employee.payload.item.id, accountType: "EMPLOYEE", administrativePrivileges: [] } });
   expectStatus(createdUser, 201, "crea y vincula cuenta a empleado");
   expectStatus(await request(`/users/${createdUser.payload.id}`, { method: "PATCH", token, body: { active: false } }), 204, "desactiva usuario");
   expectStatus(await request("/auth/login", { method: "POST", body: { identifier: staffCuit, password: adminPassword } }), 401, "impide login del usuario desactivado");
-  expectStatus(await request(`/users/${createdUser.payload.id}`, { method: "PATCH", token, body: { active: true, roleIds: [roleId("PAYROLL_MANAGER"), roleId("COMMUNICATION_MANAGER")] } }), 204, "reactiva y reasigna roles");
+  expectStatus(await request(`/users/${createdUser.payload.id}`, { method: "PATCH", token, body: { active: true, accountType: "ADMINISTRATOR", administrativePrivileges: ["PAYSLIPS", "ANNOUNCEMENTS"] } }), 204, "reactiva y asigna privilegios administrativos");
   expectStatus(await request(`/users/${createdUser.payload.id}/reset-password`, { method: "POST", token, body: { temporaryPassword } }), 204, "restablece credencial temporal");
   expectStatus(await request("/auth/login", { method: "POST", body: { identifier: staffCuit, password: adminPassword } }), 401, "invalida contraseña anterior");
   const staffLogin = await request("/auth/login", { method: "POST", body: { identifier: staffCuit, password: temporaryPassword } });
   expectStatus(staffLogin, 200, "acepta credencial temporal");
   assert.equal(staffLogin.payload.user.mustChangePassword, true, "fuerza cambio después del restablecimiento");
-  assert.deepEqual(new Set(staffLogin.payload.user.roles), new Set(["PAYROLL_MANAGER", "COMMUNICATION_MANAGER"]), "persiste asignación de roles");
+  assert.ok(staffLogin.payload.user.permissions.includes("PAYSLIP_MANAGE") && staffLogin.payload.user.permissions.includes("ANNOUNCEMENT_MANAGE"), "persiste los privilegios administrativos");
   expectStatus(await request("/admin/payslips", { token: staffLogin.payload.accessToken }), 403, "el cambio obligatorio bloquea rutas administrativas");
 
   expectStatus(await request("/auth/change-password", { method: "POST", token: staffLogin.payload.accessToken, body: { currentPassword: temporaryPassword, newPassword: changedPassword } }), 204, "cambia la contraseña temporal");
@@ -123,10 +123,10 @@ async function run() {
   expectStatus(await request("/auth/login", { method: "POST", body: { identifier: staffCuit, password: changedPassword } }), 200, "la contraseña nueva permanece válida después de reactivar");
   expectStatus(await request("/auth/login", { method: "POST", body: { identifier: staffCuit, password: temporaryPassword } }), 401, "la contraseña temporal sigue rechazada después de reactivar");
 
-  expectStatus(await request(`/users/${createdUser.payload.id}`, { method: "PATCH", token, body: { roleIds: [roleId("PAYROLL_MANAGER")] } }), 204, "quita un rol asignado");
+  expectStatus(await request(`/users/${createdUser.payload.id}`, { method: "PATCH", token, body: { accountType: "ADMINISTRATOR", administrativePrivileges: ["PAYSLIPS"] } }), 204, "quita un privilegio asignado");
   const usersAfterRemoval = await request("/users", { token });
   expectStatus(usersAfterRemoval, 200, "lista usuarios después de quitar rol");
-  assert.deepEqual(usersAfterRemoval.payload.items.find((user) => user.id === createdUser.payload.id).roles, ["PAYROLL_MANAGER"], "persiste la quita de rol");
+  assert.deepEqual(usersAfterRemoval.payload.items.find((user) => user.id === createdUser.payload.id).administrativePrivileges, ["PAYSLIPS"], "persiste la quita de privilegio");
 
   console.log("E2E administración OK: áreas, empleado, roles, usuario, activación y restablecimiento temporal.");
 }

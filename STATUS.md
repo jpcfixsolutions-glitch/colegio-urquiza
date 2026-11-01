@@ -1,5 +1,41 @@
 # Estado actual
 
+## Corrección de cuentas administrativas con acceso personal — 2026-11-01
+
+- Tanto Empleado como Administrador exigen una ficha de empleado/CUIT. El
+  selector se conserva visible y obligatorio para ambos tipos de cuenta en alta
+  y edición.
+- Todo administrador recibe además el rol base `EMPLOYEE`; por eso conserva
+  `PAYSLIP_VIEW_OWN` y `ANNOUNCEMENT_VIEW`, y el sidebar mantiene `Mis avisos`,
+  `Mis recibos` y `Mis datos` junto a las secciones administrativas permitidas.
+  Los privilegios administrativos se agregan, nunca sustituyen el acceso
+  personal. Las conversiones entre tipos conservan el vínculo al empleado.
+- No hubo cambios de schema ni migraciones. Verificaciones: backend 24/24,
+  frontend 13/13 y build Vite correctos.
+
+## Refactorización de cuentas y privilegios — 2026-11-01
+
+- `Usuarios` presenta exclusivamente los tipos de cuenta Empleado y
+  Administrador. Los privilegios administrativos se administran sólo para
+  administradores con etiquetas amigables: recibos, avisos, personal, usuarios
+  y auditoría, incluyendo acceso administrativo completo sincronizado.
+- La autorización sigue usando `permissions`, `roles`, `role_permissions` y
+  `user_roles`. No se modificó el schema ni se creó una migración: se agregaron
+  roles internos idempotentes para composición (`ADMINISTRATOR`, gestión de
+  personal, usuarios y auditoría). Los roles heredados de liquidaciones y
+  comunicaciones conservan compatibilidad y se interpretan visualmente como
+  administrador de Recibos o Avisos.
+- Las APIs de creación y edición aceptan `accountType` y
+  `administrativePrivileges`; rechazan privilegios para empleados, limpian las
+  asignaciones residuales al cambiar tipo y exigen empleado asociado para una
+  cuenta de empleado. Las solicitudes protegidas recalculan identidad y
+  permisos en cada request, por lo que un permiso removido deja de autorizar de
+  inmediato. Se protege al último administrador activo con gestión de usuarios.
+- Verificaciones: seed idempotente aplicado y backend `node --test` correcto
+  (23/23). Frontend `node --test` correcto (13/13) y build Vite correcto. La
+  E2E administrativa quedó iniciada pero no completó por espera de conexión a
+  Turso en este entorno.
+
 ## Corrección UI/UX — Gestión de recibos responsive — 2026-11-01
 
 - En `Historial`, el filtro Año dejó de ser un campo de texto y ahora es un
