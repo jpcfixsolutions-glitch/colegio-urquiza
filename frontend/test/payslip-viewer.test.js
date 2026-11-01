@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { getPdfPageSize, loadValidatedPdf } from "../src/features/payslipViewer.js";
+import { buildPdfOpeningPage, getPdfPageSize, loadValidatedPdf } from "../src/features/payslipViewer.js";
 
 test("confirma una carga sólo después de recibir un PDF válido completo", async () => {
   const contents = "%PDF-1.4\ncontenido de prueba";
@@ -21,4 +21,16 @@ test("ajusta cada página al ancho del visor móvil y conserva el zoom", () => {
   const zoomed = getPdfPageSize(612, 792, 360, 1.5);
   assert.equal(zoomed.width, 492);
   assert.equal(Math.round(zoomed.height), 637);
+});
+
+test("la pestaña temporal del recibo declara viewport y presenta errores sin interpolar HTML", () => {
+  const loading = buildPdfOpeningPage();
+  assert.match(loading, /name="viewport" content="width=device-width, initial-scale=1"/);
+  assert.match(loading, /min-height:100dvh/);
+  assert.match(loading, /Preparando el acceso seguro al PDF/);
+
+  const failed = buildPdfOpeningPage("<script>alert('xss')</script>");
+  assert.match(failed, /No se pudo abrir el recibo/);
+  assert.doesNotMatch(failed, /<script>alert/);
+  assert.match(failed, /&lt;script&gt;/);
 });

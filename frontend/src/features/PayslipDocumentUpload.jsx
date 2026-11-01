@@ -202,6 +202,7 @@ export function PayslipDocumentUpload({ onComplete }) {
           <button className="modal-close" type="button" aria-label="Cerrar" disabled={busy} onClick={close}>×</button>
         </header>
 
+        <div className="upload-modal-content">
         {step === "configure" && <form onSubmit={review}>
           <div className="upload-form-grid">
             <div className="field"><label>Mes correspondiente</label><select value={configuration.month} onChange={event => setConfiguration({ ...configuration, month: event.target.value })}>{MONTHS.map((month, index) => <option value={index + 1} key={month}>{month}</option>)}</select></div>
@@ -234,11 +235,11 @@ export function PayslipDocumentUpload({ onComplete }) {
             <span><strong>{rows.length}</strong>Archivos</span>
           </div>
           <p className="review-help">Verificá las asociaciones. Los nombres que no coincidan con la convención pueden asignarse manualmente.</p>
-          <div className="table-wrap upload-review-table"><table className="table"><thead><tr><th>Archivo</th><th>CUIT / comprobante</th><th>Empleado</th><th>Estado</th></tr></thead><tbody>{rows.map(row => <tr key={row.clientId}><td>{row.fileName}{row.error && <small className="row-error">{row.error}</small>}</td><td>{row.cuit || "—"}<small>{row.receiptNumber ? `Comp. ${row.receiptNumber}` : ""}</small></td><td><select value={row.employeeId || ""} disabled={busy || !row.valid || row.status === "OK"} onChange={event => selectEmployee(row.clientId, event.target.value)}><option value="">Sin asociar</option>{employees.map(employee => <option value={employee.id} key={employee.id}>{employee.lastName}, {employee.firstName} · {employee.cuit || employee.employeeNumber}</option>)}</select></td><td><span className={`bulk-status ${row.status.toLowerCase()}`}>{STATUS_LABELS[row.status] || row.status}</span>{row.reviewStatus === "PERIOD_MISMATCH" && <small>El nombre indica otro período</small>}</td></tr>)}</tbody></table></div>
+          <div className="table-wrap upload-review-table"><table className="table"><colgroup><col className="upload-file-column" /><col className="upload-proof-column" /><col className="upload-employee-column" /><col className="upload-status-column" /></colgroup><thead><tr><th>Archivo</th><th>CUIT / comprobante</th><th>Empleado</th><th>Estado</th></tr></thead><tbody>{rows.map(row => <tr key={row.clientId}><td data-label="Archivo">{row.fileName}{row.error && <small className="row-error">{row.error}</small>}</td><td data-label="CUIT / comprobante">{row.cuit || "—"}<small>{row.receiptNumber ? `Comp. ${row.receiptNumber}` : ""}</small></td><td data-label="Empleado"><select value={row.employeeId || ""} disabled={busy || !row.valid || row.status === "OK"} onChange={event => selectEmployee(row.clientId, event.target.value)}><option value="">Sin asociar</option>{employees.map(employee => <option value={employee.id} key={employee.id}>{employee.lastName}, {employee.firstName} · {employee.cuit || employee.employeeNumber}</option>)}</select></td><td data-label="Estado"><span className={`bulk-status ${row.status.toLowerCase()}`}>{STATUS_LABELS[row.status] || row.status}</span>{row.reviewStatus === "PERIOD_MISMATCH" && <small>El nombre indica otro período</small>}</td></tr>)}</tbody></table></div>
           {progress && <p className="bulk-progress">Progreso: {progress.processed} / {progress.total}</p>}
           {message && <p className={step === "done" ? "success" : "error"} role="status">{message}</p>}
           <div className="modal-actions">{step === "review" && <button className="btn ghost" type="button" disabled={busy} onClick={() => setStep("configure")}>Volver</button>}<button className="btn red" type="button" disabled={busy || (step === "review" && !readyRows.length)} onClick={step === "done" ? close : upload}>{step === "done" ? "Cerrar" : busy ? "Cargando…" : `Cargar ${readyRows.length} documento${readyRows.length === 1 ? "" : "s"}`}</button></div>
-        </>}
+        </>}</div>
       </section>
     </div>}
   </>;

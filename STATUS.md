@@ -1,5 +1,23 @@
 # Estado actual
 
+## Corrección UI/UX — Gestión de recibos responsive — 2026-11-01
+
+- En `Historial`, el filtro Año dejó de ser un campo de texto y ahora es un
+  selector con `Todos` y los años presentes en los recibos disponibles,
+  ordenados de forma descendente. Comparte el mismo componente, alto y grilla
+  responsive que los demás filtros, sin cambiar el contrato de filtrado.
+- La modal de `Carga de documentos` usa un ancho adaptable de hasta 1100 px,
+  contenido con scroll vertical interno y acciones inferiores persistentes. La
+  revisión mantiene todas sus columnas en escritorio y pasa a tarjetas con
+  etiquetas en celular, preservando nombre, comprobante, empleado y estado sin
+  scroll horizontal de la página.
+- La pestaña temporal de apertura del PDF ahora declara viewport móvil, usa
+  `100dvh`, área segura, tarjeta fluida, indicador de carga y pantalla de
+  error comprensible. No se alteró el acceso firmado, ni las rutas ni el
+  criterio de seguimiento de visualizaciones.
+- No hubo cambios de backend, base de datos, migraciones ni dependencias.
+  Verificaciones: frontend `pnpm test` (13/13) y `pnpm build`, ambas correctas.
+
 ## Ajuste UAT — contraseña mínima de seis caracteres — 2026-11-01
 
 - La longitud mínima de contraseña pasó de 12 a 6 caracteres en el cambio
