@@ -117,7 +117,7 @@ async function run() {
   expectStatus(unreadBeforeView, 200, "contador de recibos nuevos");
   assert.equal(unreadBeforeView.payload.count, 1, "la carga notificada incrementa el contador");
   const view = await request(`/payslips/${createIntent.payload.payslipId}/view`, { token: ownerLogin.payload.accessToken });
-  const download = await request(`/payslips/${createIntent.payload.payslipId}/download`, { token: ownerLogin.payload.accessToken });
+  const download = await request(`/me/payslips/${createIntent.payload.payslipId}/download`, { token: ownerLogin.payload.accessToken });
   expectStatus(view, 200, "propietario obtiene URL de vista");
   expectStatus(download, 200, "propietario obtiene URL de descarga");
   assert.equal((await request("/me/payslips/unread-count", { token: ownerLogin.payload.accessToken })).payload.count, 0, "abrir el recibo marca la notificación como leída");
@@ -127,10 +127,12 @@ async function run() {
   let [access] = await db.select().from(payslipVersionAccesses);
   assert.equal(access?.firstViewedAt ?? null, null, "generar una URL de vista no marca el recibo como visualizado");
   assert.ok(access?.firstDownloadRequestedAt, "la solicitud de descarga se registra sin marcar una visualización");
+  const [payrollRole] = await db.select().from(roles).where(eq(roles.name, "PAYROLL_MANAGER"));
+  await db.insert(userRoles).values({ userId: owner.id, roleId: payrollRole.id });
   expectStatus(await request(`/payslips/${createIntent.payload.payslipId}/view-session`, { method: "POST", token: outsiderLogin.payload.accessToken }), 403, "empleado ajeno no crea una sesión de visor");
   expectStatus(await request(`/payslips/${createIntent.payload.payslipId}/view-session`, { method: "POST", token: managerLogin.payload.accessToken }), 403, "gestor no registra visualización del empleado");
   const viewSession = await request(`/payslips/${createIntent.payload.payslipId}/view-session`, { method: "POST", token: ownerLogin.payload.accessToken });
-  expectStatus(viewSession, 201, "propietario crea sesión de visor");
+  expectStatus(viewSession, 201, "propietario con rol de liquidaciones crea sesión desde Mis recibos");
   const confirmations = await Promise.all([1, 2].map(() => request(`/payslips/${createIntent.payload.payslipId}/view-sessions/${viewSession.payload.sessionId}/confirm`, { method: "POST", token: ownerLogin.payload.accessToken })));
   assert.equal(confirmations.filter(result => result.response.status === 204).length, 1, "dos confirmaciones simultáneas consumen una única sesión");
   assert.equal(confirmations.filter(result => result.response.status === 409).length, 1, "la confirmación repetida se rechaza");

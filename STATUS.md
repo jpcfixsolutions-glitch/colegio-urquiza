@@ -1,5 +1,28 @@
 # Estado actual
 
+## Corrección UAT — portal personal para usuarios con roles de gestión — 2026-10-31
+
+- Los usuarios vinculados a un empleado ya no pierden sus funciones personales
+  por tener permisos administrativos. El mismo shell de gestión muestra ahora
+  `Mis avisos`, `Mis recibos` y `Mis datos`, además de las opciones de
+  administración que correspondan.
+- Se diferenciaron explícitamente `Gestionar avisos` y `Gestionar recibos` de
+  las vistas personales. Abrir un documento desde el historial administrativo
+  continúa sin registrar un visto del empleado; abrirlo desde `Mis recibos` sí
+  crea y confirma la sesión personal de visualización.
+- El backend autoriza el evento personal por la vinculación real entre el
+  usuario y el empleado propietario, aunque ese usuario también posea
+  `PAYSLIP_MANAGE`. Las descargas personales usan una ruta separada para no
+  confundirlas con accesos administrativos.
+- No hubo cambios de schema ni migraciones. Se agregó una regresión de
+  navegación para cuentas con doble rol y la E2E asigna al empleado propietario
+  el rol de liquidaciones antes de abrir su recibo.
+- Verificaciones: frontend `pnpm test` (11/11) y `pnpm build`; backend `pnpm
+  test` (21/21); `pnpm e2e:payslips` contra Turso/Supabase con limpieza y caso
+  de doble rol, todas correctas. La aplicación local cargó correctamente en el
+  navegador; la sesión disponible no estaba autenticada y no se utilizaron
+  credenciales reales para la comprobación visual.
+
 ## Corrección UAT — visto de recibos en celular y despliegue — 2026-10-31
 
 - La revisión de Turso confirmó que el usuario Mateo Andrés había abierto el
