@@ -1,5 +1,17 @@
 # Estado actual
 
+## Campo de login compatible con admin bootstrap — 2026-11-01
+
+- El campo visual de inicio de sesión conserva el formato automático para
+  CUIT, pero ya no elimina letras ni `@`; por ello admite escribir o pegar
+  `admin@colegio.local` en la misma entrada.
+- La excepción continúa limitada en backend al administrador bootstrap, al
+  flag `ALLOW_LEGACY_ADMIN_EMAIL_LOGIN=true` y al rol RBAC `ADMIN`; escribir
+  otro email no habilita su autenticación.
+- Se cambió el teclado móvil a texto para que sea posible ingresar `@` sin
+  depender de un teclado numérico. La etiqueta pública se mantiene como CUIT.
+- Verificaciones: frontend `node --test` (13/13) y build Vite correctos.
+
 ## Corrección de login CUIT y compatibilidad bootstrap — 2026-11-01
 
 - Causa raíz confirmada en Turso: `employees.cuit_normalized` no existía. El
