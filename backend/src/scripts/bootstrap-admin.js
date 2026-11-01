@@ -27,4 +27,4 @@ await db.insert(users).values({
   mustChangePassword: true,
 });
 await db.insert(userRoles).values({ userId: id, roleId: adminRole.id });
-console.log("ADMIN bootstrap creado. Puede iniciar sesión temporalmente por email si ALLOW_LEGACY_ADMIN_EMAIL_LOGIN=true.");
+console.log("ADMIN bootstrap creado. Puede iniciar sesión temporalmente por email.");

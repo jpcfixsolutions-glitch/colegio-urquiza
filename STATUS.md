@@ -5,9 +5,9 @@
 - El campo visual de inicio de sesión conserva el formato automático para
   CUIT, pero ya no elimina letras ni `@`; por ello admite escribir o pegar
   `admin@colegio.local` en la misma entrada.
-- La excepción continúa limitada en backend al administrador bootstrap, al
-  flag `ALLOW_LEGACY_ADMIN_EMAIL_LOGIN=true` y al rol RBAC `ADMIN`; escribir
-  otro email no habilita su autenticación.
+- La excepción continúa limitada en backend al administrador bootstrap y al
+  rol RBAC `ADMIN`; escribir otro email no habilita su autenticación. No
+  depende de variables de entorno.
 - Se cambió el teclado móvil a texto para que sea posible ingresar `@` sin
   depender de un teclado numérico. La etiqueta pública se mantiene como CUIT.
 - Verificaciones: frontend `node --test` (13/13) y build Vite correctos.
@@ -23,11 +23,10 @@
   modo que dos formatos históricos equivalentes jamás autentican una cuenta
   ambigua. La inspección real encontró 80 empleados y cero grupos duplicados
   tras normalización.
-- La excepción temporal se limita exactamente a `admin@colegio.local` y sólo
-  con `ALLOW_LEGACY_ADMIN_EMAIL_LOGIN=true`. Además de validar contraseña y
-  estado, comprueba que la cuenta tenga el rol RBAC `ADMIN`; ningún otro email
-  puede iniciar sesión. El flag queda activo en el `.env` local y documentado
-  en `.env.example`, sin exposición al frontend.
+- La excepción temporal se limita exactamente a `admin@colegio.local`.
+  Además de validar contraseña y estado, comprueba que la cuenta tenga el rol
+  RBAC `ADMIN`; ningún otro email puede iniciar sesión. No depende de
+  variables de entorno ni se expone al frontend.
 - La migración real aplicada es
   `20261101214127_optional_institutional_email`, exclusivamente para volver
   nullable el email institucional. Tras aplicarla, Turso confirmó

@@ -76,13 +76,7 @@ async function run() {
   expectStatus(await request("/auth/login", { method: "POST", body: { cuit: "20309990051", password } }), 401, "cuenta inactiva");
   expectStatus(await request("/auth/login", { method: "POST", body: { cuit: `${prefix}normal@example.test`, password } }), 401, "email de usuario normal");
 
-  const savedFlag = process.env.ALLOW_LEGACY_ADMIN_EMAIL_LOGIN;
-  process.env.ALLOW_LEGACY_ADMIN_EMAIL_LOGIN = "false";
-  expectStatus(await request("/auth/login", { method: "POST", body: { cuit: "admin@colegio.local", password } }), 401, "admin bootstrap con flag desactivado");
-  process.env.ALLOW_LEGACY_ADMIN_EMAIL_LOGIN = "true";
   expectStatus(await request("/auth/login", { method: "POST", body: { cuit: "admin@colegio.local", password: "incorrecta" } }), 401, "admin bootstrap con contraseña incorrecta");
-  if (savedFlag === undefined) delete process.env.ALLOW_LEGACY_ADMIN_EMAIL_LOGIN;
-  else process.env.ALLOW_LEGACY_ADMIN_EMAIL_LOGIN = savedFlag;
 
   console.log("E2E CUIT OK: formatos equivalentes, credenciales inválidas, cuenta ausente/inactiva y rechazo de emails normales.");
 }

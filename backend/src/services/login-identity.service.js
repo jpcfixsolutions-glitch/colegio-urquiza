@@ -5,10 +5,9 @@ import { employees, roles, userRoles, users } from "../db/schema.js";
 import { normalizeCuit } from "../utils/payslip-file-name.js";
 
 const LEGACY_BOOTSTRAP_ADMIN_EMAIL = "admin@colegio.local";
-const legacyAdminEmailLoginEnabled = () => process.env.ALLOW_LEGACY_ADMIN_EMAIL_LOGIN === "true";
 
-export const isLegacyBootstrapAdminIdentifier = (identifier, enabled = legacyAdminEmailLoginEnabled()) =>
-  enabled && String(identifier).trim() === LEGACY_BOOTSTRAP_ADMIN_EMAIL;
+export const isLegacyBootstrapAdminIdentifier = (identifier) =>
+  String(identifier).trim() === LEGACY_BOOTSTRAP_ADMIN_EMAIL;
 
 export function normalizeLoginCuit(identifier) {
   return normalizeCuit(identifier);

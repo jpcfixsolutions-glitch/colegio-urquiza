@@ -15,8 +15,7 @@ test("rechaza valores que no contienen un CUIT completo", () => {
   assert.equal(normalizeLoginCuit("usuario@colegio.local"), null);
 });
 
-test("la compatibilidad de email identifica únicamente al admin bootstrap cuando está habilitada", () => {
-  assert.equal(isLegacyBootstrapAdminIdentifier("admin@colegio.local", true), true);
-  assert.equal(isLegacyBootstrapAdminIdentifier("empleado@colegio.local", true), false);
-  assert.equal(isLegacyBootstrapAdminIdentifier("admin@colegio.local", false), false);
+test("la compatibilidad de email identifica únicamente al admin bootstrap", () => {
+  assert.equal(isLegacyBootstrapAdminIdentifier("admin@colegio.local"), true);
+  assert.equal(isLegacyBootstrapAdminIdentifier("empleado@colegio.local"), false);
 });
