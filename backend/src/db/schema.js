@@ -283,10 +283,6 @@ export const employees = sqliteTable(
 
         cuit: text("cuit"),
 
-        // Se conserva el valor de presentación y se indexa esta versión para
-        // identificar la cuenta de acceso sin depender de sus separadores.
-        cuitNormalized: text("cuit_normalized"),
-
         dni: text("dni"),
 
         personalEmail: text("personal_email"),
@@ -335,9 +331,6 @@ export const employees = sqliteTable(
 
         uniqueIndex("employees_cuit_unique")
             .on(table.cuit),
-
-        uniqueIndex("employees_cuit_normalized_unique")
-            .on(table.cuitNormalized),
 
         uniqueIndex("employees_dni_unique")
             .on(table.dni),

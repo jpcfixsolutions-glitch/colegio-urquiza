@@ -1,7 +1,7 @@
 {
   "version": "7",
   "dialect": "sqlite",
-  "id": "c763d188-8f0b-47c0-b6db-348f718727c0",
+  "id": "84a80ca4-32a0-446e-afda-dccc8135aa94",
   "prevIds": [
     "19f62fb9-fa9d-4f45-875c-daf6c05a1e1e"
   ],
@@ -561,16 +561,6 @@
       "default": null,
       "generated": null,
       "name": "cuit",
-      "entityType": "columns",
-      "table": "employees"
-    },
-    {
-      "type": "text",
-      "notNull": false,
-      "autoincrement": false,
-      "default": null,
-      "generated": null,
-      "name": "cuit_normalized",
       "entityType": "columns",
       "table": "employees"
     },
@@ -2180,20 +2170,6 @@
       "where": null,
       "origin": "manual",
       "name": "employees_cuit_unique",
-      "entityType": "indexes",
-      "table": "employees"
-    },
-    {
-      "columns": [
-        {
-          "value": "cuit_normalized",
-          "isExpression": false
-        }
-      ],
-      "isUnique": true,
-      "where": null,
-      "origin": "manual",
-      "name": "employees_cuit_normalized_unique",
       "entityType": "indexes",
       "table": "employees"
     },

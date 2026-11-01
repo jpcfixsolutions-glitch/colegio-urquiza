@@ -28,6 +28,7 @@
 		"bootstrap-admin": "node src/scripts/bootstrap-admin.js",
 		"test": "node --test test/**/*.test.js",
     "e2e:auth": "node src/scripts/e2e-auth.js",
+    "e2e:cuit-login": "node src/scripts/e2e-cuit-login.js",
     "e2e:password-change": "node src/scripts/e2e-password-change.js",
 		"e2e:admin": "node src/scripts/e2e-admin.js",
 		"e2e:payslips": "node src/scripts/e2e-payslips.js",

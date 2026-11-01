@@ -5,7 +5,9 @@ export function notFound(req, res) {
 }
 
 export function errorHandler(error, req, res, next) {
-  const status = error instanceof ApiError ? error.status : 500;
-  if (status === 500) console.error(error);
-  res.status(status).json({ error: error.message || "Error interno", details: error.details });
+  if (!(error instanceof ApiError)) {
+    console.error(error);
+    return res.status(500).json({ error: "No se pudo procesar la solicitud. Intentá nuevamente." });
+  }
+  res.status(error.status).json({ error: error.message, details: error.details });
 }

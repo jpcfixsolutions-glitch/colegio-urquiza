@@ -1,30 +1,33 @@
 # Estado actual
 
-## Login exclusivo por CUIT y email institucional opcional — 2026-11-01
+## Corrección de login CUIT y compatibilidad bootstrap — 2026-11-01
 
-- El acceso autentica exclusivamente con `cuit` y contraseña. El backend
-  normaliza cualquier separador de presentación, busca el empleado por su
-  CUIT normalizado y luego su cuenta asociada; ya no existe compatibilidad de
-  login por email ni por nombre de usuario. Los fallos de CUIT inexistente,
-  cuenta ausente, inactiva o contraseña inválida conservan la respuesta
-  pública genérica.
-- Se creó la migración versionada
-  `20261101211814_cuit_login_and_optional_account_email`: vuelve nullable el
-  email institucional y añade `employees.cuit_normalized` con índice único.
-  La migración conserva el CUIT visual, elimina cualquier separador sólo para
-  la columna de comparación y falla ante una colisión normalizada, evitando
-  ambigüedades de acceso.
-- Alta y edición de cuentas aceptan email opcional; un valor vacío se
-  persiste como `NULL`. Ambas clases de cuenta continúan exigiendo empleado
-  activo con CUIT asociado. El bootstrap administrativo ahora también exige
-  un empleado existente y crea el vínculo con roles administrativo y base.
-- La UI de login solicita sólo CUIT y contraseña; `Usuarios` identifica el
-  acceso por CUIT y permite agregar, modificar o quitar el email institucional
-  opcional.
-- Verificaciones: backend `node --test` (24/24), frontend `node --test`
-  (13/13), build Vite correcto y comprobación sintáctica de las rutas y el
-  bootstrap. La migración quedó generada y revisada, sin aplicarse contra
-  Turso desde este entorno.
+- Causa raíz confirmada en Turso: `employees.cuit_normalized` no existía. El
+  código local la consultaba pese a que la migración no se había aplicado;
+  por eso Drizzle exponía el SQL al cliente a través del mensaje de error.
+- Se eliminó la dependencia de esa columna y no se alteraron CUIT, empleados
+  ni vínculos existentes. El login normaliza el identificador en JavaScript y
+  compara contra los CUIT de `employees`; exige una coincidencia única, de
+  modo que dos formatos históricos equivalentes jamás autentican una cuenta
+  ambigua. La inspección real encontró 80 empleados y cero grupos duplicados
+  tras normalización.
+- La excepción temporal se limita exactamente a `admin@colegio.local` y sólo
+  con `ALLOW_LEGACY_ADMIN_EMAIL_LOGIN=true`. Además de validar contraseña y
+  estado, comprueba que la cuenta tenga el rol RBAC `ADMIN`; ningún otro email
+  puede iniciar sesión. El flag queda activo en el `.env` local y documentado
+  en `.env.example`, sin exposición al frontend.
+- La migración real aplicada es
+  `20261101214127_optional_institutional_email`, exclusivamente para volver
+  nullable el email institucional. Tras aplicarla, Turso confirmó
+  `users.email` nullable y la ausencia física de `cuit_normalized`.
+- Los errores inesperados devuelven un texto controlado sin SQL, tablas,
+  columnas ni parámetros. El servidor conserva el log técnico interno.
+- Verificaciones: backend `node --test` (26/26), E2E contra Turso para CUIT
+  con y sin formato, CUIT inexistente, contraseña incorrecta, empleado sin
+  cuenta, inactivo y emails normales; limpieza E2E correcta. Se confirmó que
+  el bootstrap existe, está activo y posee rol `ADMIN`. La prueba de login
+  exitoso con su contraseña real queda para UAT porque esa credencial no está
+  disponible en este entorno.
 
 ## Corrección de cuentas administrativas con acceso personal — 2026-11-01
 
