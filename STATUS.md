@@ -1,5 +1,31 @@
 # Estado actual
 
+## Login exclusivo por CUIT y email institucional opcional — 2026-11-01
+
+- El acceso autentica exclusivamente con `cuit` y contraseña. El backend
+  normaliza cualquier separador de presentación, busca el empleado por su
+  CUIT normalizado y luego su cuenta asociada; ya no existe compatibilidad de
+  login por email ni por nombre de usuario. Los fallos de CUIT inexistente,
+  cuenta ausente, inactiva o contraseña inválida conservan la respuesta
+  pública genérica.
+- Se creó la migración versionada
+  `20261101211814_cuit_login_and_optional_account_email`: vuelve nullable el
+  email institucional y añade `employees.cuit_normalized` con índice único.
+  La migración conserva el CUIT visual, elimina cualquier separador sólo para
+  la columna de comparación y falla ante una colisión normalizada, evitando
+  ambigüedades de acceso.
+- Alta y edición de cuentas aceptan email opcional; un valor vacío se
+  persiste como `NULL`. Ambas clases de cuenta continúan exigiendo empleado
+  activo con CUIT asociado. El bootstrap administrativo ahora también exige
+  un empleado existente y crea el vínculo con roles administrativo y base.
+- La UI de login solicita sólo CUIT y contraseña; `Usuarios` identifica el
+  acceso por CUIT y permite agregar, modificar o quitar el email institucional
+  opcional.
+- Verificaciones: backend `node --test` (24/24), frontend `node --test`
+  (13/13), build Vite correcto y comprobación sintáctica de las rutas y el
+  bootstrap. La migración quedó generada y revisada, sin aplicarse contra
+  Turso desde este entorno.
+
 ## Corrección de cuentas administrativas con acceso personal — 2026-11-01
 
 - Tanto Empleado como Administrador exigen una ficha de empleado/CUIT. El

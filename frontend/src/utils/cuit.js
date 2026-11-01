@@ -5,8 +5,4 @@ export function formatCuit(value) {
   return `${digits.slice(0, 2)}-${digits.slice(2, 10)}-${digits.slice(10)}`;
 }
 
-export function formatLoginIdentifier(value) {
-  const text = String(value || "");
-  // Conserva el acceso transitorio de administradores históricos por email.
-  return /[a-z@]/i.test(text) ? text.slice(0, 254) : formatCuit(text);
-}
+export const formatLoginCuit = formatCuit;
