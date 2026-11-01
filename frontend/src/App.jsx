@@ -1,4 +1,4 @@
-import { Component, useCallback, useEffect, useRef, useState } from "react";
+import { Component, lazy, Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { api, setAccessToken } from "./api/httpClient.js";
 import { createRequestGate } from "./api/requestGate.js";
 import { EmployeeManagement } from "./features/EmployeeManagement.jsx";
@@ -15,6 +15,7 @@ import logo from "./imgs/Isologotipo IMSU - RGB.png";
 import "./bulk.css";
 
 const can = (user, permission) => user?.permissions?.includes(permission);
+const PdfDocumentViewer = lazy(() => import("./features/PdfDocumentViewer.jsx").then((module) => ({ default: module.PdfDocumentViewer })));
 const TYPES = { SALARY: "Mensual", EARNINGS: "Ganancias", NOTIFICATION: "Notificación", SAC: "SAC / Aguinaldo", VACATION: "Vacaciones", FINAL_SETTLEMENT: "Liquidación final", ADJUSTMENT: "Ajuste", OTHER: "Otro" };
 const MONTHS = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 const feedback = (text, kind = "success") => ({ text, kind });
@@ -195,7 +196,6 @@ function EmployeeAnnouncements({ onError }) {
 
 function EmployeePayslips({ onError, onRead }) {
   const query = useApi("/me/payslips"), [viewer, setViewer] = useState(null), [viewerError, setViewerError] = useState("");
-  useEffect(() => () => { if (viewer?.blobUrl) URL.revokeObjectURL(viewer.blobUrl); }, [viewer?.blobUrl]);
   const closeViewer = () => setViewer(null);
   const openViewer = async item => {
     setViewerError(""); setViewer({ item, loading: true });
@@ -203,15 +203,14 @@ function EmployeePayslips({ onError, onRead }) {
       const session = await api(`/payslips/${item.id}/view-session`, { method: "POST" });
       const pdf = await loadValidatedPdf(session.url);
       await api(`/payslips/${item.id}/view-sessions/${session.sessionId}/confirm`, { method: "POST" });
-      const blobUrl = URL.createObjectURL(pdf);
-      setViewer({ item, blobUrl, loading: false });
+      setViewer({ item, pdf, loading: false });
       await query.load(); onRead?.();
     } catch (error) {
       setViewer(null); setViewerError(error.message); onError?.(error.message);
     }
   };
   const download = async item => { if (await openPdf(item.id, "download", onError, true)) { query.load(); onRead?.(); } };
-  return <div className="employee-module"><PageHeader eyebrow="Documentación" title="Mis recibos" description="Consultá y descargá tus documentos salariales de forma segura." /><Notice msg={viewerError ? feedback(viewerError, "error") : null} /><Load {...query} empty="Todavía no tenés recibos disponibles" emptyIcon="receipts"><div className="personal-receipts-grid">{query.items.map(item => <article className={`personal-receipt-card ${item.unread ? "unread" : ""}`} key={item.id}><div className="receipt-document-icon"><Icon name="receipts" size={23} /></div><div className="personal-receipt-main"><div className="receipt-title-line"><h2>{item.periodLabel}</h2>{item.unread && <StatusBadge tone="warning">Nuevo</StatusBadge>}</div><p>{TYPES[item.documentType]}</p>{item.viewed && <small className="receipt-access-note"><Icon name="double-check" size={15} /> Visualizado</small>}</div><div className="personal-receipt-actions"><button className="btn secondary" onClick={() => openViewer(item)}><Icon name="eye" size={17} /> Ver</button><button className="btn primary" onClick={() => download(item)}><Icon name="download" size={17} /> Descargar</button></div></article>)}</div></Load><Modal open={Boolean(viewer)} title={viewer?.item?.periodLabel || "Visor de recibo"} eyebrow="Documento salarial" onClose={closeViewer} className="pdf-viewer-modal">{viewer?.loading ? <div className="viewer-loading"><span className="spinner" /> Cargando y validando el PDF…</div> : <><p className="viewer-help">El visto se registró después de cargar y validar completamente el PDF. Esto confirma la apertura técnica, no la lectura completa del contenido.</p><iframe className="pdf-viewer" src={viewer?.blobUrl} title={`Recibo ${viewer?.item?.periodLabel}`} /></>}</Modal></div>;
+  return <div className="employee-module"><PageHeader eyebrow="Documentación" title="Mis recibos" description="Consultá y descargá tus documentos salariales de forma segura." /><Notice msg={viewerError ? feedback(viewerError, "error") : null} /><Load {...query} empty="Todavía no tenés recibos disponibles" emptyIcon="receipts"><div className="personal-receipts-grid">{query.items.map(item => <article className={`personal-receipt-card ${item.unread ? "unread" : ""}`} key={item.id}><div className="receipt-document-icon"><Icon name="receipts" size={23} /></div><div className="personal-receipt-main"><div className="receipt-title-line"><h2>{item.periodLabel}</h2>{item.unread && <StatusBadge tone="warning">Nuevo</StatusBadge>}</div><p>{TYPES[item.documentType]}</p>{item.viewed && <small className="receipt-access-note"><Icon name="double-check" size={15} /> Visualizado</small>}</div><div className="personal-receipt-actions"><button className="btn secondary" onClick={() => openViewer(item)}><Icon name="eye" size={17} /> Ver</button><button className="btn primary" onClick={() => download(item)}><Icon name="download" size={17} /> Descargar</button></div></article>)}</div></Load><Modal open={Boolean(viewer)} title={viewer?.item?.periodLabel || "Visor de recibo"} eyebrow="Documento salarial" onClose={closeViewer} className="pdf-viewer-modal">{viewer?.loading ? <div className="viewer-loading"><span className="spinner" /> Cargando y validando el PDF…</div> : <Suspense fallback={<div className="viewer-loading"><span className="spinner" /> Preparando el visor…</div>}><PdfDocumentViewer pdf={viewer?.pdf} title={`recibo ${viewer?.item?.periodLabel}`} /></Suspense>}</Modal></div>;
 }
 
 function EmployeeHome({ user, onUserChange }) {

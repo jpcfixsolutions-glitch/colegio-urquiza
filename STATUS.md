@@ -1,5 +1,24 @@
 # Estado actual
 
+## Corrección UAT — visor de recibos integrado en celular — 2026-11-01
+
+- Se reemplazó el `iframe` del recibo, que en navegadores móviles delegaba al
+  visor PDF del sistema y mostraba un botón `Abrir` inoperante, por un visor
+  propio basado en PDF.js y canvas.
+- Al tocar `Ver`, el documento se descarga y valida mediante el flujo seguro
+  existente y sus páginas se renderizan directamente dentro de la aplicación.
+  Se eliminó la descripción técnica de visualización solicitada en UAT.
+- El visor ajusta la página al ancho disponible, permite desplazamiento
+  vertical y horizontal, informa la cantidad de páginas e incorpora zoom entre
+  75% y 200%. Usa el build de compatibilidad para navegadores móviles y carga
+  PDF.js de forma diferida, únicamente cuando se abre un recibo.
+- No hubo cambios de backend, schema ni migraciones. Las URLs firmadas siguen
+  siendo efímeras y no se persisten; el registro de visualización conserva el
+  flujo autenticado existente.
+- Verificaciones: frontend `pnpm test` (12/12), `pnpm build` y prueba visual en
+  navegador con un documento real de 14 páginas dentro de un contenedor de 390
+  px. Se comprobó renderizado, desplazamiento y zoom de 100% a 125%.
+
 ## Corrección UAT — portal personal para usuarios con roles de gestión — 2026-10-31
 
 - Los usuarios vinculados a un empleado ya no pierden sus funciones personales
