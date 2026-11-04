@@ -944,3 +944,45 @@ export const auditLogs = sqliteTable(
             .on(table.action),
     ]
 );
+
+// =====================================================
+// PASSWORD RECOVERY REQUESTS
+// Las credenciales nunca se almacenan aquí. La solicitud solamente permite
+// que administración inicie el reset seguro ya existente.
+// =====================================================
+
+export const passwordRecoveryRequests = sqliteTable(
+    "password_recovery_requests",
+    {
+        id: text("id").primaryKey(),
+
+        userId: text("user_id")
+            .notNull()
+            .references(() => users.id, { onDelete: "cascade" }),
+
+        status: text("status", {
+            enum: ["PENDING", "RESOLVED", "CANCELLED"],
+        })
+            .notNull()
+            .default("PENDING"),
+
+        requestCount: integer("request_count").notNull().default(1),
+        firstRequestedAt: integer("first_requested_at", { mode: "timestamp" }).notNull(),
+        lastRequestedAt: integer("last_requested_at", { mode: "timestamp" }).notNull(),
+        resolvedAt: integer("resolved_at", { mode: "timestamp" }),
+        resolvedByUserId: text("resolved_by_user_id").references(() => users.id, { onDelete: "set null" }),
+        cancelledAt: integer("cancelled_at", { mode: "timestamp" }),
+        cancelledByUserId: text("cancelled_by_user_id").references(() => users.id, { onDelete: "set null" }),
+        createdAt: createdAt(),
+        updatedAt: updatedAt(),
+    },
+    (table) => [
+        check("password_recovery_requests_status_check", sql`${table.status} IN ('PENDING', 'RESOLVED', 'CANCELLED')`),
+        check("password_recovery_requests_count_check", sql`${table.requestCount} >= 1`),
+        uniqueIndex("password_recovery_requests_one_pending_unique")
+            .on(table.userId)
+            .where(sql`${table.status} = 'PENDING'`),
+        index("password_recovery_requests_status_last_requested_idx").on(table.status, table.lastRequestedAt),
+        index("password_recovery_requests_user_idx").on(table.userId),
+    ]
+);

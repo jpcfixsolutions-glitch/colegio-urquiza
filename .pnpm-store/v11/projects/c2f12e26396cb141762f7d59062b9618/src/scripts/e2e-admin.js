@@ -57,6 +57,7 @@ async function startServer() {
 
 async function run() {
   await clean();
+  const staffCuit = "20309990027";
   const [adminRole] = await db.select().from(roles).where(eq(roles.name, "ADMIN"));
   if (!adminRole) throw new Error("Ejecute pnpm seed antes del E2E administrativo");
   const adminId = randomUUID();
@@ -73,7 +74,7 @@ async function run() {
   const areaB = await request("/areas", { method: "POST", token, body: { code: "E2EADMIN-B", name: "Área E2E B" } });
   expectStatus(areaA, 201, "crea primera área");
   expectStatus(areaB, 201, "crea segunda área");
-  const employee = await request("/employees", { method: "POST", token, body: { employeeNumber: "E2EADMIN-001", firstName: "Empleado", lastName: "Prueba", areaIds: [areaA.payload.item.id, areaB.payload.item.id] } });
+  const employee = await request("/employees", { method: "POST", token, body: { employeeNumber: "E2EADMIN-001", cuit: staffCuit, firstName: "Empleado", lastName: "Prueba", areaIds: [areaA.payload.item.id, areaB.payload.item.id] } });
   expectStatus(employee, 201, "crea empleado con múltiples áreas");
   expectStatus(await request(`/employees/${employee.payload.item.id}`, { method: "PATCH", token, body: { active: false, areaIds: [areaB.payload.item.id] } }), 204, "edita empleado y sus áreas");
   const employeeList = await request("/employees", { token });
@@ -86,24 +87,24 @@ async function run() {
   const roleList = await request("/roles", { token });
   expectStatus(roleList, 200, "consulta roles");
   const roleId = (name) => roleList.payload.items.find((role) => role.name === name).id;
-  const createdUser = await request("/users", { method: "POST", token, body: { email: `${prefix}staff@example.test`, username: `${prefix}staff`, password: adminPassword, employeeId: employee.payload.item.id, roleIds: [roleId("EMPLOYEE")] } });
+  const createdUser = await request("/users", { method: "POST", token, body: { email: `${prefix}staff@example.test`, username: `${prefix}staff`, password: adminPassword, employeeId: employee.payload.item.id, accountType: "EMPLOYEE", administrativePrivileges: [] } });
   expectStatus(createdUser, 201, "crea y vincula cuenta a empleado");
   expectStatus(await request(`/users/${createdUser.payload.id}`, { method: "PATCH", token, body: { active: false } }), 204, "desactiva usuario");
-  expectStatus(await request("/auth/login", { method: "POST", body: { identifier: `${prefix}staff`, password: adminPassword } }), 401, "impide login del usuario desactivado");
-  expectStatus(await request(`/users/${createdUser.payload.id}`, { method: "PATCH", token, body: { active: true, roleIds: [roleId("PAYROLL_MANAGER"), roleId("COMMUNICATION_MANAGER")] } }), 204, "reactiva y reasigna roles");
+  expectStatus(await request("/auth/login", { method: "POST", body: { identifier: staffCuit, password: adminPassword } }), 401, "impide login del usuario desactivado");
+  expectStatus(await request(`/users/${createdUser.payload.id}`, { method: "PATCH", token, body: { active: true, accountType: "ADMINISTRATOR", administrativePrivileges: ["PAYSLIPS", "ANNOUNCEMENTS"] } }), 204, "reactiva y asigna privilegios administrativos");
   expectStatus(await request(`/users/${createdUser.payload.id}/reset-password`, { method: "POST", token, body: { temporaryPassword } }), 204, "restablece credencial temporal");
-  expectStatus(await request("/auth/login", { method: "POST", body: { identifier: `${prefix}staff`, password: adminPassword } }), 401, "invalida contraseña anterior");
-  const staffLogin = await request("/auth/login", { method: "POST", body: { identifier: `${prefix}staff`, password: temporaryPassword } });
+  expectStatus(await request("/auth/login", { method: "POST", body: { identifier: staffCuit, password: adminPassword } }), 401, "invalida contraseña anterior");
+  const staffLogin = await request("/auth/login", { method: "POST", body: { identifier: staffCuit, password: temporaryPassword } });
   expectStatus(staffLogin, 200, "acepta credencial temporal");
   assert.equal(staffLogin.payload.user.mustChangePassword, true, "fuerza cambio después del restablecimiento");
-  assert.deepEqual(new Set(staffLogin.payload.user.roles), new Set(["PAYROLL_MANAGER", "COMMUNICATION_MANAGER"]), "persiste asignación de roles");
+  assert.ok(staffLogin.payload.user.permissions.includes("PAYSLIP_MANAGE") && staffLogin.payload.user.permissions.includes("ANNOUNCEMENT_MANAGE"), "persiste los privilegios administrativos");
   expectStatus(await request("/admin/payslips", { token: staffLogin.payload.accessToken }), 403, "el cambio obligatorio bloquea rutas administrativas");
 
   expectStatus(await request("/auth/change-password", { method: "POST", token: staffLogin.payload.accessToken, body: { currentPassword: temporaryPassword, newPassword: changedPassword } }), 204, "cambia la contraseña temporal");
   expectStatus(await request("/auth/logout", { method: "POST", cookie: staffLogin.cookie }), 204, "permite cerrar la sesión posterior al cambio");
-  const changedLogin = await request("/auth/login", { method: "POST", body: { identifier: `${prefix}staff`, password: changedPassword } });
+  const changedLogin = await request("/auth/login", { method: "POST", body: { identifier: staffCuit, password: changedPassword } });
   expectStatus(changedLogin, 200, "acepta la contraseña nueva");
-  expectStatus(await request("/auth/login", { method: "POST", body: { identifier: `${prefix}staff`, password: temporaryPassword } }), 401, "la contraseña temporal queda invalidada tras el cambio");
+  expectStatus(await request("/auth/login", { method: "POST", body: { identifier: staffCuit, password: temporaryPassword } }), 401, "la contraseña temporal queda invalidada tras el cambio");
 
   expectStatus(await request(`/users/${createdUser.payload.id}`, { method: "PATCH", token, body: { active: false } }), 204, "desactiva y revoca sesiones del usuario");
   const [deactivatedUser] = await db.select({ passwordHash: users.passwordHash }).from(users).where(eq(users.id, createdUser.payload.id));
@@ -111,21 +112,21 @@ async function run() {
   assert.equal(await bcrypt.compare(temporaryPassword, deactivatedUser.passwordHash), false, "desactivar no restaura el hash temporal");
   const activeSessions = await db.select().from(authSessions).where(eq(authSessions.userId, createdUser.payload.id));
   assert.ok(activeSessions.length > 0 && activeSessions.every((session) => session.revokedAt), "desactivar revoca todas las sesiones activas");
-  const disabledLogin = await request("/auth/login", { method: "POST", body: { identifier: `${prefix}staff`, password: changedPassword } });
+  const disabledLogin = await request("/auth/login", { method: "POST", body: { identifier: staffCuit, password: changedPassword } });
   expectStatus(disabledLogin, 401, "rechaza login de usuario desactivado");
-  assert.equal(disabledLogin.payload.error, "Usuario o contraseña incorrectos", "el login inactivo conserva un mensaje público genérico");
-  expectStatus(await request("/auth/login", { method: "POST", body: { identifier: `${prefix}staff`, password: temporaryPassword } }), 401, "rechaza la contraseña temporal aun con la cuenta desactivada");
+  assert.equal(disabledLogin.payload.error, "CUIT o contraseña incorrectos", "el login inactivo conserva un mensaje público genérico");
+  expectStatus(await request("/auth/login", { method: "POST", body: { identifier: staffCuit, password: temporaryPassword } }), 401, "rechaza la contraseña temporal aun con la cuenta desactivada");
   expectStatus(await request("/auth/me", { token: changedLogin.payload.accessToken }), 401, "bloquea el access token emitido antes de desactivar");
   expectStatus(await request("/auth/refresh", { method: "POST", cookie: changedLogin.cookie }), 401, "bloquea el refresh token emitido antes de desactivar");
 
   expectStatus(await request(`/users/${createdUser.payload.id}`, { method: "PATCH", token, body: { active: true } }), 204, "reactiva sin tocar credenciales");
-  expectStatus(await request("/auth/login", { method: "POST", body: { identifier: `${prefix}staff`, password: changedPassword } }), 200, "la contraseña nueva permanece válida después de reactivar");
-  expectStatus(await request("/auth/login", { method: "POST", body: { identifier: `${prefix}staff`, password: temporaryPassword } }), 401, "la contraseña temporal sigue rechazada después de reactivar");
+  expectStatus(await request("/auth/login", { method: "POST", body: { identifier: staffCuit, password: changedPassword } }), 200, "la contraseña nueva permanece válida después de reactivar");
+  expectStatus(await request("/auth/login", { method: "POST", body: { identifier: staffCuit, password: temporaryPassword } }), 401, "la contraseña temporal sigue rechazada después de reactivar");
 
-  expectStatus(await request(`/users/${createdUser.payload.id}`, { method: "PATCH", token, body: { roleIds: [roleId("PAYROLL_MANAGER")] } }), 204, "quita un rol asignado");
+  expectStatus(await request(`/users/${createdUser.payload.id}`, { method: "PATCH", token, body: { accountType: "ADMINISTRATOR", administrativePrivileges: ["PAYSLIPS"] } }), 204, "quita un privilegio asignado");
   const usersAfterRemoval = await request("/users", { token });
   expectStatus(usersAfterRemoval, 200, "lista usuarios después de quitar rol");
-  assert.deepEqual(usersAfterRemoval.payload.items.find((user) => user.id === createdUser.payload.id).roles, ["PAYROLL_MANAGER"], "persiste la quita de rol");
+  assert.deepEqual(usersAfterRemoval.payload.items.find((user) => user.id === createdUser.payload.id).administrativePrivileges, ["PAYSLIPS"], "persiste la quita de privilegio");
 
   console.log("E2E administración OK: áreas, empleado, roles, usuario, activación y restablecimiento temporal.");
 }

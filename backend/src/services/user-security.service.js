@@ -4,8 +4,8 @@ import { db } from "../config/db.js";
 import { authSessions, users } from "../db/schema.js";
 import { ApiError } from "../utils/api-error.js";
 
-export async function revokeActiveSessions(userId) {
-  await db.update(authSessions)
+export async function revokeActiveSessions(userId, executor = db) {
+  await executor.update(authSessions)
     .set({ revokedAt: new Date() })
     .where(and(eq(authSessions.userId, userId), isNull(authSessions.revokedAt)));
 }
@@ -24,17 +24,17 @@ export async function changeOwnPassword(userId, currentPassword, newPassword) {
   }).where(eq(users.id, userId));
 }
 
-export async function resetPasswordWithTemporaryCredential(userId, temporaryPassword) {
-  const [user] = await db.select({ id: users.id }).from(users).where(eq(users.id, userId));
+export async function resetPasswordWithTemporaryCredential(userId, temporaryPassword, executor = db) {
+  const [user] = await executor.select({ id: users.id }).from(users).where(eq(users.id, userId));
   if (!user) throw new ApiError(404, "Usuario no encontrado");
 
-  await db.update(users).set({
+  await executor.update(users).set({
     passwordHash: await bcrypt.hash(temporaryPassword, 12),
     mustChangePassword: true,
     passwordChangedAt: null,
     updatedAt: new Date(),
   }).where(eq(users.id, userId));
-  await revokeActiveSessions(userId);
+  await revokeActiveSessions(userId, executor);
 }
 
 export async function updateUserAccountState(userId, { active, forcePasswordChange }) {

@@ -8,6 +8,7 @@
 .profile-wide { grid-column: 1 / -1; }
 .employee-form { width: 100%; }
 .employee-form .profile-heading { display: none; }
+.personal-profile-card .locked-field { background: var(--gray-100); color: var(--gray-600); cursor: not-allowed; }
 .employee-details { width: min(100%, 650px); }
 .employee-details dl { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 0; }
 .employee-details dl div { border: 1px solid var(--gray-200); border-radius: var(--radius-sm); padding: 12px; background: var(--gray-50); }

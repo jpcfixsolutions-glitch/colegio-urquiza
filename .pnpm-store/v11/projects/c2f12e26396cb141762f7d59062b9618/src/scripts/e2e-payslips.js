@@ -13,7 +13,7 @@ process.env.JWT_REFRESH_SECRET ||= "e2e-only-refresh-secret-not-for-production";
 const { createApp } = await import("../app.js");
 const { db } = await import("../config/db.js");
 const { supabase } = await import("../config/supabase.js");
-const { auditLogs, authSessions, employees, payslipVersions, payslips, roles, userRoles, users } = await import("../db/schema.js");
+const { auditLogs, authSessions, employees, payslipVersionAccesses, payslipVersions, payslipViewSessions, payslips, roles, userRoles, users } = await import("../db/schema.js");
 
 const prefix = "e2e_payslip_";
 const password = "E2ePayslipPassword!2026";
@@ -47,6 +47,11 @@ async function clean() {
   }
   const e2ePayslips = await db.select({ id: payslips.id }).from(payslips).where(like(payslips.title, "E2E payslip%"));
   if (e2ePayslips.length) {
+    const versionIds = (await db.select({ id: payslipVersions.id }).from(payslipVersions).where(inArray(payslipVersions.payslipId, e2ePayslips.map((item) => item.id)))).map((item) => item.id);
+    if (versionIds.length) {
+      await db.delete(payslipViewSessions).where(inArray(payslipViewSessions.payslipVersionId, versionIds));
+      await db.delete(payslipVersionAccesses).where(inArray(payslipVersionAccesses.payslipVersionId, versionIds));
+    }
     await db.delete(payslipVersions).where(inArray(payslipVersions.payslipId, e2ePayslips.map((item) => item.id)));
     await db.delete(payslips).where(inArray(payslips.id, e2ePayslips.map((item) => item.id)));
   }
@@ -70,7 +75,7 @@ async function createUser(name, roleName, employee) {
   await db.insert(users).values({ id, email: `${prefix}${name}@example.test`, username: `${prefix}${name}`, passwordHash: await bcrypt.hash(password, 12), mustChangePassword: false });
   if (employee) await db.update(employees).set({ userId: id }).where(eq(employees.id, employee.id));
   await db.insert(userRoles).values({ userId: id, roleId: role.id });
-  return { id, identifier: `${prefix}${name}` };
+  return { id, identifier: employee?.cuit || `${prefix}${name}` };
 }
 
 async function startServer() {
@@ -80,8 +85,8 @@ async function startServer() {
 
 async function run() {
   await clean();
-  const employeeA = { id: randomUUID() };
-  const employeeB = { id: randomUUID() };
+  const employeeA = { id: randomUUID(), cuit: "20309990035", dni: "30999003", personalEmail: "e2e.owner@example.test", address: "Calle E2E 123", phone: "3515550001", maritalStatus: "SINGLE", profileUpdatedAt: new Date() };
+  const employeeB = { id: randomUUID(), cuit: "20309990043", dni: "30999004", personalEmail: "e2e.outsider@example.test", address: "Calle E2E 456", phone: "3515550002", maritalStatus: "SINGLE", profileUpdatedAt: new Date() };
   await db.insert(employees).values([
     { ...employeeA, employeeNumber: "E2EPAY-001", firstName: "Recibo", lastName: "Propio" },
     { ...employeeB, employeeNumber: "E2EPAY-002", firstName: "Recibo", lastName: "Ajeno" },
@@ -112,12 +117,31 @@ async function run() {
   expectStatus(unreadBeforeView, 200, "contador de recibos nuevos");
   assert.equal(unreadBeforeView.payload.count, 1, "la carga notificada incrementa el contador");
   const view = await request(`/payslips/${createIntent.payload.payslipId}/view`, { token: ownerLogin.payload.accessToken });
-  const download = await request(`/payslips/${createIntent.payload.payslipId}/download`, { token: ownerLogin.payload.accessToken });
+  const download = await request(`/me/payslips/${createIntent.payload.payslipId}/download`, { token: ownerLogin.payload.accessToken });
   expectStatus(view, 200, "propietario obtiene URL de vista");
   expectStatus(download, 200, "propietario obtiene URL de descarga");
   assert.equal((await request("/me/payslips/unread-count", { token: ownerLogin.payload.accessToken })).payload.count, 0, "abrir el recibo marca la notificación como leída");
   assert.ok(view.payload.url && download.payload.url, "las URLs firmadas se devuelven sin persistirse");
   expectStatus(await request(`/payslips/${createIntent.payload.payslipId}/view`, { token: outsiderLogin.payload.accessToken }), 403, "empleado ajeno no accede al recibo");
+
+  let [access] = await db.select().from(payslipVersionAccesses);
+  assert.equal(access?.firstViewedAt ?? null, null, "generar una URL de vista no marca el recibo como visualizado");
+  assert.ok(access?.firstDownloadRequestedAt, "la solicitud de descarga se registra sin marcar una visualización");
+  const [payrollRole] = await db.select().from(roles).where(eq(roles.name, "PAYROLL_MANAGER"));
+  await db.insert(userRoles).values({ userId: owner.id, roleId: payrollRole.id });
+  expectStatus(await request(`/payslips/${createIntent.payload.payslipId}/view-session`, { method: "POST", token: outsiderLogin.payload.accessToken }), 403, "empleado ajeno no crea una sesión de visor");
+  expectStatus(await request(`/payslips/${createIntent.payload.payslipId}/view-session`, { method: "POST", token: managerLogin.payload.accessToken }), 403, "gestor no registra visualización del empleado");
+  const viewSession = await request(`/payslips/${createIntent.payload.payslipId}/view-session`, { method: "POST", token: ownerLogin.payload.accessToken });
+  expectStatus(viewSession, 201, "propietario con rol de liquidaciones crea sesión desde Mis recibos");
+  const confirmations = await Promise.all([1, 2].map(() => request(`/payslips/${createIntent.payload.payslipId}/view-sessions/${viewSession.payload.sessionId}/confirm`, { method: "POST", token: ownerLogin.payload.accessToken })));
+  assert.equal(confirmations.filter(result => result.response.status === 204).length, 1, "dos confirmaciones simultáneas consumen una única sesión");
+  assert.equal(confirmations.filter(result => result.response.status === 409).length, 1, "la confirmación repetida se rechaza");
+  [access] = await db.select().from(payslipVersionAccesses);
+  assert.ok(access.firstViewedAt && access.lastViewedAt, "la carga del visor registra la visualización");
+  assert.equal(access.viewCount, 1, "la primera visualización se conserva ante confirmaciones concurrentes");
+  const firstViewedAt = access.firstViewedAt;
+  const lateSession = await request(`/payslips/${createIntent.payload.payslipId}/view-session`, { method: "POST", token: ownerLogin.payload.accessToken });
+  expectStatus(lateSession, 201, "crea una sesión antes del reemplazo para probar confirmación tardía");
 
   const replacementPdf = Buffer.from("%PDF-1.4\n1 0 obj\n<< /Type /Catalog /Version /1.7 >>\nendobj\ntrailer\n<<>>\n%%EOF\n");
   const replacement = await request(`/payslips/${createIntent.payload.payslipId}/replacement-intent`, { method: "POST", token: managerLogin.payload.accessToken, body: { originalFileName: "e2e-replacement.pdf", mimeType: "application/pdf", sizeBytes: replacementPdf.length } });
@@ -127,6 +151,14 @@ async function run() {
   const versions = await db.select().from(payslipVersions).where(eq(payslipVersions.payslipId, createIntent.payload.payslipId));
   assert.equal(versions.filter((version) => version.status === "ACTIVE").length, 1, "mantiene exactamente una versión ACTIVE");
   assert.equal(versions.filter((version) => version.status === "REPLACED").length, 1, "conserva la versión previa como REPLACED");
+  expectStatus(await request(`/payslips/${createIntent.payload.payslipId}/view-sessions/${lateSession.payload.sessionId}/confirm`, { method: "POST", token: ownerLogin.payload.accessToken }), 204, "la confirmación tardía se conserva en la versión anterior");
+  const currentAdminList = await request("/admin/payslips?visualization=UNVIEWED", { token: managerLogin.payload.accessToken });
+  expectStatus(currentAdminList, 200, "gestor filtra recibos sin visualizar");
+  assert.ok(currentAdminList.payload.items.some(item => item.id === createIntent.payload.payslipId), "la nueva versión permanece sin visualizar");
+  const accessHistory = await request(`/admin/payslips/${createIntent.payload.payslipId}/access`, { token: managerLogin.payload.accessToken });
+  expectStatus(accessHistory, 200, "gestor consulta historial por versión");
+  assert.equal(accessHistory.payload.versions[0].firstViewedAt, null, "la versión vigente no hereda el visto anterior");
+  assert.equal(new Date(accessHistory.payload.versions[1].firstViewedAt).getTime(), firstViewedAt.getTime(), "la versión reemplazada conserva la primera visualización");
   expectStatus(await request(`/payslips/${createIntent.payload.payslipId}/archive`, { method: "POST", token: managerLogin.payload.accessToken }), 204, "archiva recibo");
   const archivedList = await request("/me/payslips", { token: ownerLogin.payload.accessToken });
   expectStatus(archivedList, 200, "lista después de archivo");
@@ -135,6 +167,12 @@ async function run() {
   expectStatus(await request(`/payslips/${createIntent.payload.payslipId}/unarchive`, { method: "POST", token: managerLogin.payload.accessToken }), 204, "desarchiva recibo");
   const restoredList = await request("/me/payslips", { token: ownerLogin.payload.accessToken });
   assert.ok(restoredList.payload.items.some((item) => item.id === createIntent.payload.payslipId), "vuelve a exponer el recibo al empleado tras desarchivarlo");
+  const currentViewSession = await request(`/payslips/${createIntent.payload.payslipId}/view-session`, { method: "POST", token: ownerLogin.payload.accessToken });
+  expectStatus(currentViewSession, 201, "crea sesión para la versión corregida");
+  expectStatus(await request(`/payslips/${createIntent.payload.payslipId}/view-sessions/${currentViewSession.payload.sessionId}/confirm`, { method: "POST", token: ownerLogin.payload.accessToken }), 204, "confirma visualización de la versión corregida");
+  const viewedAdminList = await request("/admin/payslips?visualization=VIEWED", { token: managerLogin.payload.accessToken });
+  assert.ok(viewedAdminList.payload.items.some(item => item.id === createIntent.payload.payslipId), "el listado y sus filtros reflejan la vista de la versión vigente");
+  assert.equal(viewedAdminList.payload.stats.viewed, viewedAdminList.payload.items.length, "los indicadores coinciden con el filtro de visualizados");
 
   console.log("E2E recibos OK: intent, subida directa, confirmación, acceso contextual, reemplazo, archivo y desarchivo.");
 }

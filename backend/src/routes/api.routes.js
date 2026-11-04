@@ -1,7 +1,7 @@
 import { Router } from "express";
 import rateLimit from "express-rate-limit";
 import bcrypt from "bcryptjs";
-import { randomUUID, createHash } from "node:crypto";
+import { randomUUID, createHash, randomBytes } from "node:crypto";
 import { and, desc, eq, gt, inArray, isNotNull, isNull, ne, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import { db } from "../config/db.js";
@@ -20,9 +20,12 @@ import { normalizeCuit, parsePayslipFileName } from "../utils/payslip-file-name.
 import { accessHistory, activityStatistics, onlineUsers, PRESENCE_HEARTBEAT_SECONDS, PRESENCE_WINDOW_SECONDS, registerSessionActivity } from "../services/activity.service.js";
 import { findUserForLogin } from "../services/login-identity.service.js";
 import { ACCOUNT_TYPES, accountAccessDto, roleIdsForAccountAccess, validateAccountAccess } from "../services/account-access.service.js";
+import { cancelPasswordRecoveryRequest, listPasswordRecoveryRequests, PASSWORD_RECOVERY_NOT_FOUND_MESSAGE, PASSWORD_RECOVERY_SUCCESS_MESSAGE, requestPasswordRecovery, resolvePasswordRecoveryRequest } from "../services/password-recovery.service.js";
 
 const router = Router();
 const loginLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 10, standardHeaders: true, legacyHeaders: false, message: { error: "Demasiados intentos. Intente más tarde." } });
+const recoveryIpLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 12, standardHeaders: true, legacyHeaders: false, message: { error: "Demasiados intentos de recuperación. Intentá nuevamente más tarde." } });
+const recoveryCuitLimiter = rateLimit({ windowMs: 15 * 60 * 1000, limit: 4, standardHeaders: true, legacyHeaders: false, keyGenerator: (req) => normalizeCuit(req.body?.cuit) || String(req.body?.cuit || "").trim().slice(0, 64), message: { error: "Demasiados intentos de recuperación. Intentá nuevamente más tarde." } });
 const UUID = z.string().uuid();
 const accountTypeSchema = z.enum([ACCOUNT_TYPES.EMPLOYEE, ACCOUNT_TYPES.ADMINISTRATOR]);
 const administrativePrivilegesSchema = z.array(z.enum(["PAYSLIPS", "ANNOUNCEMENTS", "EMPLOYEES", "USERS", "AUDIT"])).default([]);
@@ -91,6 +94,12 @@ router.post("/auth/login", loginLimiter, validate(z.object({ body: z.object({ cu
   req.user = identity; await audit(req, "LOGIN_SUCCESS", "user", user.id);
   res.json({ accessToken, user: userDto(identity) });
 }));
+router.post("/auth/password-recovery/request", recoveryIpLimiter, recoveryCuitLimiter, validate(z.object({ body: z.object({ cuit: z.string().min(1).max(64) }) })), asyncHandler(async (req, res) => {
+  const result = await requestPasswordRecovery(req.validated.body.cuit);
+  if (!result.found) throw new ApiError(404, PASSWORD_RECOVERY_NOT_FOUND_MESSAGE);
+  await auditForUser(req, result.userId, "PASSWORD_RECOVERY_REQUESTED", "user", result.userId);
+  res.json({ message: PASSWORD_RECOVERY_SUCCESS_MESSAGE });
+}));
 router.post("/auth/refresh", asyncHandler(async (req, res) => {
   const token = req.cookies.refresh_token; if (!token) throw new ApiError(401, "Sesión no disponible");
   let payload; try { payload = verifyRefreshToken(token); } catch { throw new ApiError(401, "Sesión vencida"); }
@@ -130,6 +139,23 @@ router.get("/users",requirePermission("USER_MANAGE"),asyncHandler(async(req,res)
 router.post("/users",requirePermission("USER_MANAGE"),validate(z.object({body:z.object({email:optionalEmailSchema,username:z.string().min(3).max(60).optional(),password:z.string().min(MIN_PASSWORD_LENGTH),employeeId:UUID,accountType:accountTypeSchema,administrativePrivileges:administrativePrivilegesSchema})})),asyncHandler(async(req,res)=>{const {password,employeeId,accountType,administrativePrivileges,...data}=req.validated.body;const selected=validateAccountAccess({accountType,administrativePrivileges});const employee=await assertEmployeeCanBeLinked(employeeId,null,true);const id=randomUUID(),roleIds=await roleIdsForAccountAccess({accountType,administrativePrivileges:selected});await db.insert(users).values({id,...data,passwordHash:await bcrypt.hash(password,12),mustChangePassword:true});await db.update(employees).set({userId:id,updatedAt:new Date()}).where(eq(employees.id,employee.id));await db.insert(userRoles).values(roleIds.map(roleId=>({userId:id,roleId})));await audit(req,"USER_CREATED","user",id,{accountType,administrativePrivileges:selected});res.status(201).json({id,cuit:normalizeCuit(employee.cuit)});}));
 router.patch("/users/:id",requirePermission("USER_MANAGE"),validate(z.object({params:z.object({id:UUID}),body:z.object({email:optionalEmailSchema,active:z.boolean().optional(),username:z.string().min(3).max(60).nullable().optional(),employeeId:UUID.nullable().optional(),accountType:accountTypeSchema.optional(),administrativePrivileges:administrativePrivilegesOptionalSchema,forcePasswordChange:z.boolean().optional()}).refine(body=>body.administrativePrivileges===undefined || body.accountType!==undefined,{message:"Los privilegios requieren un tipo de cuenta"})})),asyncHandler(async(req,res)=>{const {email,employeeId,accountType,administrativePrivileges,active,forcePasswordChange,username}=req.validated.body;const accountChange=accountType!==undefined;const selected=accountChange?validateAccountAccess({accountType,administrativePrivileges:administrativePrivileges||[]}):null;const roleIds=accountChange?await roleIdsForAccountAccess({accountType,administrativePrivileges:selected}):undefined;await assertNotLastUserManager(req.validated.params.id,active,roleIds);if(employeeId!==undefined){if(!employeeId)throw new ApiError(422,"Toda cuenta debe tener un empleado asociado");await assertEmployeeCanBeLinked(employeeId,req.validated.params.id,true);await db.update(employees).set({userId:null}).where(eq(employees.userId,req.validated.params.id));await db.update(employees).set({userId:req.validated.params.id,updatedAt:new Date()}).where(eq(employees.id,employeeId));}else if(accountChange){const identity=await getIdentity(req.validated.params.id);if(!identity?.employeeId)throw new ApiError(422,"Toda cuenta debe tener un empleado asociado");}await updateUserAccountState(req.validated.params.id,{active,forcePasswordChange});const accountData={...(username!==undefined?{username}:{ }),...(email!==undefined?{email}:{ })};if(Object.keys(accountData).length)await db.update(users).set({...accountData,updatedAt:new Date()}).where(eq(users.id,req.validated.params.id));if(roleIds){await db.delete(userRoles).where(eq(userRoles.userId,req.validated.params.id));await db.insert(userRoles).values(roleIds.map(roleId=>({userId:req.validated.params.id,roleId})));}if(active===false)await auditForUser(req,req.validated.params.id,"SESSION_REVOKED","user",req.validated.params.id,{reason:"account_deactivated"});await audit(req,"USER_UPDATED","user",req.validated.params.id,{accountType,administrativePrivileges:selected});res.status(204).end();}));
 router.post("/users/:id/reset-password",requirePermission("USER_MANAGE"),validate(z.object({params:z.object({id:UUID}),body:z.object({temporaryPassword:z.string().min(MIN_PASSWORD_LENGTH)})})),asyncHandler(async(req,res)=>{const {temporaryPassword}=req.validated.body;const userId=req.validated.params.id;await resetPasswordWithTemporaryCredential(userId,temporaryPassword);await auditForUser(req,userId,"SESSION_REVOKED","user",userId,{reason:"password_reset"});await audit(req,"USER_PASSWORD_RESET","user",userId);res.status(204).end();}));
+router.get("/admin/password-recovery-requests", requirePermission("USER_MANAGE"), asyncHandler(async (req, res) => {
+  const items = await listPasswordRecoveryRequests();
+  res.json({ items, pendingCount: items.filter((item) => item.status === "PENDING").length });
+}));
+router.post("/admin/password-recovery-requests/:id/resolve", requirePermission("USER_MANAGE"), validate(z.object({ params: z.object({ id: UUID }) })), asyncHandler(async (req, res) => {
+  const temporaryPassword = randomBytes(18).toString("base64url");
+  const userId = await resolvePasswordRecoveryRequest(req.validated.params.id, req.user.id, temporaryPassword);
+  await auditForUser(req, userId, "SESSION_REVOKED", "user", userId, { reason: "password_recovery_resolved" });
+  await audit(req, "PASSWORD_RESET_BY_ADMIN", "user", userId, { source: "password_recovery" });
+  await audit(req, "PASSWORD_RECOVERY_RESOLVED", "password_recovery_request", req.validated.params.id, { userId });
+  res.json({ temporaryPassword });
+}));
+router.post("/admin/password-recovery-requests/:id/cancel", requirePermission("USER_MANAGE"), validate(z.object({ params: z.object({ id: UUID }) })), asyncHandler(async (req, res) => {
+  await cancelPasswordRecoveryRequest(req.validated.params.id, req.user.id);
+  await audit(req, "PASSWORD_RECOVERY_CANCELLED", "password_recovery_request", req.validated.params.id);
+  res.status(204).end();
+}));
 router.get("/roles",requirePermission("USER_MANAGE"),asyncHandler(async(req,res)=>res.json({items:await db.select().from(roles),permissions:await db.select().from(permissions)})));
 
 const activityQuerySchema = z.object({ query: z.object({ q: z.string().max(120).optional(), from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(), to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(), event: z.enum(["LOGIN_SUCCESS", "LOGIN_FAILED", "LOGOUT", "SESSION_REVOKED"]).optional(), role: z.string().max(80).optional(), page: z.coerce.number().int().min(1).max(100000).default(1), pageSize: z.coerce.number().int().min(1).max(100).default(25) }).refine(query => !query.from || !query.to || query.from <= query.to, { message: "El rango de fechas no es válido", path: ["to"] }) });

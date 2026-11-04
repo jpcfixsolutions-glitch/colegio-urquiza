@@ -18,6 +18,7 @@ const ICON_PATHS = {
   shield: <path d="M12 22s8-4 8-11V5l-8-3-8 3v6c0 7 8 11 8 11z"/>,
   clock: <><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></>,
   check: <path d="m5 12 4 4L19 6"/>,
+  "double-check": <><path d="m2.5 12 4 4L13 7"/><path d="m9 12 4 4L21 6"/></>,
   warning: <><path d="M12 3 2 21h20L12 3z"/><path d="M12 9v5M12 18h.01"/></>,
   upload: <><path d="M12 16V4m0 0L7 9m5-5 5 5"/><path d="M4 15v6h16v-6"/></>,
   lock: <><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></>,

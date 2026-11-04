@@ -35,7 +35,7 @@ export const users = sqliteTable(
     {
         id: text("id").primaryKey(),
 
-        email: text("email").notNull(),
+        email: text("email"),
 
         username: text("username"),
 
@@ -653,6 +653,67 @@ export const payslipVersions = sqliteTable(
     ]
 );
 
+// ======================================================
+// PAYSLIP VERSION ACCESS
+// Un registro agregado por versión y usuario propietario. Conserva la primera
+// apertura y descarga sin confundirlas con el estado administrativo del recibo.
+// ======================================================
+
+export const payslipVersionAccesses = sqliteTable(
+    "payslip_version_accesses",
+    {
+        payslipVersionId: text("payslip_version_id")
+            .notNull()
+            .references(() => payslipVersions.id, { onDelete: "restrict" }),
+
+        userId: text("user_id")
+            .notNull()
+            .references(() => users.id, { onDelete: "restrict" }),
+
+        employeeId: text("employee_id")
+            .notNull()
+            .references(() => employees.id, { onDelete: "restrict" }),
+
+        firstViewedAt: integer("first_viewed_at", { mode: "timestamp" }),
+        lastViewedAt: integer("last_viewed_at", { mode: "timestamp" }),
+        viewCount: integer("view_count").notNull().default(0),
+
+        firstDownloadRequestedAt: integer("first_download_requested_at", { mode: "timestamp" }),
+        lastDownloadRequestedAt: integer("last_download_requested_at", { mode: "timestamp" }),
+        downloadRequestCount: integer("download_request_count").notNull().default(0),
+    },
+    (table) => [
+        primaryKey({ columns: [table.payslipVersionId, table.userId] }),
+        index("payslip_version_accesses_employee_idx").on(table.employeeId),
+        index("payslip_version_accesses_viewed_idx").on(table.firstViewedAt),
+    ]
+);
+
+// Una sesión de visor se crea al solicitar la vista y se consume una sola vez
+// cuando el iframe controlado por la aplicación termina de cargar la respuesta.
+export const payslipViewSessions = sqliteTable(
+    "payslip_view_sessions",
+    {
+        id: text("id").primaryKey(),
+        payslipId: text("payslip_id")
+            .notNull()
+            .references(() => payslips.id, { onDelete: "restrict" }),
+        payslipVersionId: text("payslip_version_id")
+            .notNull()
+            .references(() => payslipVersions.id, { onDelete: "restrict" }),
+        userId: text("user_id")
+            .notNull()
+            .references(() => users.id, { onDelete: "restrict" }),
+        expiresAt: integer("expires_at", { mode: "timestamp" }).notNull(),
+        confirmedAt: integer("confirmed_at", { mode: "timestamp" }),
+        createdAt: createdAt(),
+    },
+    (table) => [
+        index("payslip_view_sessions_lookup_idx").on(table.id, table.userId, table.expiresAt),
+        index("payslip_view_sessions_version_idx").on(table.payslipVersionId),
+    ]
+);
+
 
 // ======================================================
 // ANNOUNCEMENTS
@@ -881,5 +942,47 @@ export const auditLogs = sqliteTable(
 
         index("audit_logs_action_idx")
             .on(table.action),
+    ]
+);
+
+// =====================================================
+// PASSWORD RECOVERY REQUESTS
+// Las credenciales nunca se almacenan aquí. La solicitud solamente permite
+// que administración inicie el reset seguro ya existente.
+// =====================================================
+
+export const passwordRecoveryRequests = sqliteTable(
+    "password_recovery_requests",
+    {
+        id: text("id").primaryKey(),
+
+        userId: text("user_id")
+            .notNull()
+            .references(() => users.id, { onDelete: "cascade" }),
+
+        status: text("status", {
+            enum: ["PENDING", "RESOLVED", "CANCELLED"],
+        })
+            .notNull()
+            .default("PENDING"),
+
+        requestCount: integer("request_count").notNull().default(1),
+        firstRequestedAt: integer("first_requested_at", { mode: "timestamp" }).notNull(),
+        lastRequestedAt: integer("last_requested_at", { mode: "timestamp" }).notNull(),
+        resolvedAt: integer("resolved_at", { mode: "timestamp" }),
+        resolvedByUserId: text("resolved_by_user_id").references(() => users.id, { onDelete: "set null" }),
+        cancelledAt: integer("cancelled_at", { mode: "timestamp" }),
+        cancelledByUserId: text("cancelled_by_user_id").references(() => users.id, { onDelete: "set null" }),
+        createdAt: createdAt(),
+        updatedAt: updatedAt(),
+    },
+    (table) => [
+        check("password_recovery_requests_status_check", sql`${table.status} IN ('PENDING', 'RESOLVED', 'CANCELLED')`),
+        check("password_recovery_requests_count_check", sql`${table.requestCount} >= 1`),
+        uniqueIndex("password_recovery_requests_one_pending_unique")
+            .on(table.userId)
+            .where(sql`${table.status} = 'PENDING'`),
+        index("password_recovery_requests_status_last_requested_idx").on(table.status, table.lastRequestedAt),
+        index("password_recovery_requests_user_idx").on(table.userId),
     ]
 );

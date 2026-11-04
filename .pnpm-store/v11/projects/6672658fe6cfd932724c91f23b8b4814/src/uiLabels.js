@@ -2,6 +2,8 @@ export const UI_LABELS = {
   ACTIVE: "Activo",
   ARCHIVED: "Archivado",
   PENDING: "Pendiente",
+  RESOLVED: "Resuelta",
+  CANCELLED: "Cancelada",
   UNMATCHED: "Sin asociar",
   PUBLISHED: "Publicado",
   DRAFT: "Borrador",

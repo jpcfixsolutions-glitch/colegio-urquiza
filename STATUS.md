@@ -607,3 +607,34 @@ registrados arriba.
   Avisos, Recibos y modal de carga. Se comprobaron 320, 360, 390, 768, 1024,
   1280, 1440 y 1920 px, más el equivalente de layout a zoom 200%; no hubo
   desborde horizontal accidental ni errores de consola.
+# Recuperación de contraseña asistida (2026-11-04)
+
+- Se agregó `password_recovery_requests`, con estados `PENDING`, `RESOLVED` y
+  `CANCELLED`, contador de solicitudes, marcas de resolución/cancelación y
+  responsables. La restricción parcial garantiza una sola solicitud pendiente
+  por usuario; no almacena CUIT ni contraseñas duplicadas.
+- Se generó y aplicó la migración
+  `20261104133510_wise_stryfe`; la tabla fue consultada posteriormente en
+  Turso para confirmar su creación física.
+- El login ahora permite solicitar recuperación con CUIT normalizado y siempre
+  responde de forma genérica. Tiene límites independientes por IP y por CUIT.
+  Las solicitudes reales se consolidan en la pendiente existente y quedan
+  auditadas sin exponer datos de cuentas inexistentes.
+- Usuarios con `USER_MANAGE` pueden listar, cancelar y resolver solicitudes
+  desde la nueva pestaña `Solicitudes de recuperación` dentro de Usuarios. La
+  resolución genera una temporal criptográficamente segura, reutiliza el
+  servicio de reseteo existente, fuerza `mustChangePassword`, revoca sesiones
+  y sólo devuelve la temporal una vez al administrador.
+- Se agregaron los endpoints públicos y administrativos de recuperación, los
+  eventos de auditoría `PASSWORD_RECOVERY_REQUESTED`,
+  `PASSWORD_RECOVERY_RESOLVED`, `PASSWORD_RECOVERY_CANCELLED` y
+  `PASSWORD_RESET_BY_ADMIN`, y la E2E `pnpm e2e:password-recovery`.
+- Corrección posterior: se reparó el cierre del ternario JSX del modal de
+  resolución en `UserAccounts.jsx`, que impedía compilar el frontend.
+- Ajuste posterior solicitado: el endpoint valida ahora que el CUIT tenga una
+  cuenta asociada antes de crear una solicitud. Un CUIT inexistente responde
+  `El CUIT no está registrado en el sistema.`, no genera auditoría ni filas de
+  recuperación y continúa sujeto a los límites independientes por IP y CUIT.
+- Verificaciones: backend `pnpm test` pasó 26/26; migración y consulta física
+  en Turso pasaron; E2E de recuperación pasó y limpió sus datos; frontend
+  `pnpm test` pasó 13/13 y `pnpm build` compiló correctamente (55 módulos).
