@@ -647,6 +647,10 @@ registrados arriba.
   indica la interfaz, además del formato histórico `_1.pdf`. Se verificó contra
   Turso que el CUIT `20439270854` corresponde a Mateo Andrés activo y se agregó
   una prueba de regresión con su nombre de archivo.
+- Ajuste visual posterior: la modal de carga de documentos prioriza ahora su
+  ancho específico (hasta 980 px), la tabla asigna anchos estables a sus
+  columnas y los estados se ajustan dentro de su celda. En móvil se preserva
+  el formato de tarjetas.
 - Verificaciones: backend `pnpm test` pasó 26/26; migración y consulta física
   en Turso pasaron; E2E de recuperación pasó y limpió sus datos; frontend
   `pnpm test` pasó 13/13 y `pnpm build` compiló correctamente (55 módulos).
