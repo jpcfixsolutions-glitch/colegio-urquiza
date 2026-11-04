@@ -16,6 +16,8 @@ export async function getIdentity(userId) {
     ...user,
     employeeId: employee?.id || null,
     cuit: employee?.cuit || null,
+    firstName: employee?.firstName || null,
+    lastName: employee?.lastName || null,
     profileUpdatedAt: employee?.profileUpdatedAt || null,
     ...getPersonalProfileStatus(employee),
     permissions: [...new Set(rows.map((row) => row.code))],

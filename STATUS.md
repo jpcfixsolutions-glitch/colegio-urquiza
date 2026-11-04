@@ -635,6 +635,10 @@ registrados arriba.
   cuenta asociada antes de crear una solicitud. Un CUIT inexistente responde
   `El CUIT no está registrado en el sistema.`, no genera auditoría ni filas de
   recuperación y continúa sujeto a los límites independientes por IP y CUIT.
+- Ajuste visual posterior: la identidad de sesión incorpora nombre y apellido
+  del empleado. El pie del sidebar muestra ahora ese nombre y conserva el rol;
+  la esquina superior derecha muestra únicamente el nombre y el avatar, sin
+  exponer el email.
 - Verificaciones: backend `pnpm test` pasó 26/26; migración y consulta física
   en Turso pasaron; E2E de recuperación pasó y limpió sus datos; frontend
   `pnpm test` pasó 13/13 y `pnpm build` compiló correctamente (55 módulos).

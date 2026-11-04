@@ -61,7 +61,7 @@ export const refreshCookieOptions = (nodeEnv = process.env.NODE_ENV) => {
     path: "/api/auth",
   };
 };
-const userDto = (identity) => ({ id: identity.id, email: identity.email, username: identity.username, employeeId: identity.employeeId, cuit: identity.cuit, permissions: identity.permissions, roles: identity.roles, mustChangePassword: identity.mustChangePassword, profileComplete: identity.profileComplete, profileNeedsReview: identity.profileNeedsReview, profileUpdatedAt: identity.profileUpdatedAt, profileReviewDueAt: identity.profileReviewDueAt });
+const userDto = (identity) => ({ id: identity.id, email: identity.email, username: identity.username, employeeId: identity.employeeId, cuit: identity.cuit, firstName: identity.firstName, lastName: identity.lastName, permissions: identity.permissions, roles: identity.roles, mustChangePassword: identity.mustChangePassword, profileComplete: identity.profileComplete, profileNeedsReview: identity.profileNeedsReview, profileUpdatedAt: identity.profileUpdatedAt, profileReviewDueAt: identity.profileReviewDueAt });
 async function issueSession(req, res, user) {
   const id = newSessionId(); const refresh = signRefreshToken(user.id, id);
   const now = new Date();
