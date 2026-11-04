@@ -643,6 +643,10 @@ registrados arriba.
   el CUIT en el selector y debajo del nombre de cada empleado, y deja de
   presentar el legajo. La asociación manual en carga masiva también muestra
   sólo CUIT como identificador.
+- Corrección de carga masiva: el parser acepta el sufijo `_Nro 1.pdf` que
+  indica la interfaz, además del formato histórico `_1.pdf`. Se verificó contra
+  Turso que el CUIT `20439270854` corresponde a Mateo Andrés activo y se agregó
+  una prueba de regresión con su nombre de archivo.
 - Verificaciones: backend `pnpm test` pasó 26/26; migración y consulta física
   en Turso pasaron; E2E de recuperación pasó y limpió sus datos; frontend
   `pnpm test` pasó 13/13 y `pnpm build` compiló correctamente (55 módulos).

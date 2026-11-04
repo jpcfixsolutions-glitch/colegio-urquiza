@@ -17,6 +17,20 @@ test("interpreta la convención Liquidacion_mes-año_CUIT_nombre_comprobante", (
   );
 });
 
+test("acepta el sufijo Nro que indica la interfaz de carga", () => {
+  assert.deepEqual(
+    parsePayslipFileName("Liquidación_11-2026_20-43927085-4_Mateo Andres_Nro 1.pdf"),
+    {
+      format: "LIQUIDATION",
+      month: 11,
+      year: 2026,
+      cuit: "20439270854",
+      employeeName: "Mateo Andres",
+      receiptNumber: "1",
+    },
+  );
+});
+
 test("acepta rutas internas del ZIP y conserva compatibilidad con el nombre anterior", () => {
   assert.equal(parsePayslipFileName("recibos/Liquidación_12-2026_20123456783_Ana Gomez_1.pdf").cuit, "20123456783");
   assert.deepEqual(parsePayslipFileName("1234_2026_09.pdf"), {

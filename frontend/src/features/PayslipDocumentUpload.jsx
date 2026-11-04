@@ -223,7 +223,7 @@ export function PayslipDocumentUpload({ onComplete }) {
             <p>{configuration.mode === "zip" ? "El ZIP se abre en este navegador; los PDF se suben directamente al almacenamiento privado." : "Podés seleccionar hasta 100 documentos."}</p>
             <input type="file" accept={configuration.mode === "zip" ? ".zip,application/zip" : ".pdf,application/pdf"} multiple={configuration.mode === "separate"} onChange={event => setSelectedFiles(event.target.files)} required />
           </div>
-          <p className="file-convention"><strong>Nombre esperado:</strong> Liquidacion_MM-AAAA_CUIT_Nombre y Apellido_Nro.pdf</p>
+          <p className="file-convention"><strong>Nombre esperado:</strong> Liquidación_MM-AAAA_CUIT_Nombre y Apellido_Nro 1.pdf</p>
           {message && <p className="error" role="alert">{message}</p>}
           <div className="modal-actions"><button className="btn ghost" type="button" onClick={close}>Cancelar</button><button className="btn red" disabled={busy}>{busy ? "Revisando…" : "Revisar documentos"}</button></div>
         </form>}

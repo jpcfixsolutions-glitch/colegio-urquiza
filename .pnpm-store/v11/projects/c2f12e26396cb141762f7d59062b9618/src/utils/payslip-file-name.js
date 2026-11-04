@@ -1,4 +1,7 @@
-const LIQUIDATION_FILE_PATTERN = /^Liquidaci[oó]n_(0?[1-9]|1[0-2])-(20\d{2})_(\d{2}-?\d{8}-?\d)_(.+)_(\d+)\.pdf$/i;
+// Acepta tanto el número directo histórico (`_1.pdf`) como la forma que
+// comunica la interfaz (`_Nro 1.pdf`). El CUIT sigue siendo el único dato
+// usado para asociar el archivo con un empleado.
+const LIQUIDATION_FILE_PATTERN = /^Liquidaci[oó]n_(0?[1-9]|1[0-2])-(20\d{2})_(\d{2}-?\d{8}-?\d)_(.+)_(?:Nro[ _-]*)?(\d+)\.pdf$/i;
 const LEGACY_FILE_PATTERN = /^(\d+)[_-](20\d{2})[_-](0[1-9]|1[0-2])(?:[_-].*)?\.pdf$/i;
 
 export function normalizeCuit(value) {
