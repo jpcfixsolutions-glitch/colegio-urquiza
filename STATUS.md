@@ -639,6 +639,10 @@ registrados arriba.
   del empleado. El pie del sidebar muestra ahora ese nombre y conserva el rol;
   la esquina superior derecha muestra únicamente el nombre y el avatar, sin
   exponer el email.
+- Ajuste visual posterior: Gestión de recibos busca por nombre o CUIT, muestra
+  el CUIT en el selector y debajo del nombre de cada empleado, y deja de
+  presentar el legajo. La asociación manual en carga masiva también muestra
+  sólo CUIT como identificador.
 - Verificaciones: backend `pnpm test` pasó 26/26; migración y consulta física
   en Turso pasaron; E2E de recuperación pasó y limpió sus datos; frontend
   `pnpm test` pasó 13/13 y `pnpm build` compiló correctamente (55 módulos).
