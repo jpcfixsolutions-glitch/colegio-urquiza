@@ -10,7 +10,7 @@ Objetivo: empleados, áreas, usuarios y roles completos. Módulos: rutas, servic
 Objetivo: carga privada, acceso contextual y versionado. Módulos: storage, recibos, frontend. Trabajo: intent, upload directo, confirmación, view/download, archive y reemplazo. Pruebas: propietario/ajeno/manager, una versión ACTIVE. Comandos: E2E Turso+Supabase. Criterio: objetos `e2e_*` limpiados y DB consistente.
 
 ## H4 — Carga masiva
-Objetivo: revisión por legajo y procesamiento independiente. Módulos: bulk API y UI. Trabajo: selección múltiple, correcciones, intents individuales, resumen. Pruebas: archivos válidos, sin asociación e inválidos. Comandos: frontend build y E2E. Criterio: fallos parciales no abortan éxitos.
+Objetivo: revisión por CUIT y procesamiento independiente. Módulos: bulk API y UI. Trabajo: selección múltiple, correcciones, intents individuales, resumen. Pruebas: archivos válidos, sin asociación e inválidos. Comandos: frontend build y E2E. Criterio: fallos parciales no abortan éxitos.
 
 ## H5 — Avisos
 Objetivo: CRUD, ALL/AREAS, lectura y vigencia. Módulos: announcements API/UI. Trabajo: edición, publicación, archivo y audiencia múltiple. Pruebas: borrador, expirado, multi-área, unread. Comandos: `pnpm test`, E2E HTTP. Criterio: sólo audiencias autorizadas ven publicados vigentes.

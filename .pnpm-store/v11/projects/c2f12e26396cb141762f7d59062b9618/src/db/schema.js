@@ -278,14 +278,9 @@ export const employees = sqliteTable(
                 onDelete: "set null",
             }),
 
-        employeeNumber: text("employee_number")
-            .notNull(),
-
         cuit: text("cuit"),
 
         dni: text("dni"),
-
-        personalEmail: text("personal_email"),
 
         address: text("address"),
 
@@ -325,9 +320,6 @@ export const employees = sqliteTable(
     (table) => [
         uniqueIndex("employees_user_unique")
             .on(table.userId),
-
-        uniqueIndex("employees_number_unique")
-            .on(table.employeeNumber),
 
         uniqueIndex("employees_cuit_unique")
             .on(table.cuit),

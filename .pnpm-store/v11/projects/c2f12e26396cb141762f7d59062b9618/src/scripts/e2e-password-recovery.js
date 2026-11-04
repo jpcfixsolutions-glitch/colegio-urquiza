@@ -55,8 +55,8 @@ async function run() {
     { id: employeeId, email: `${prefix}employee@example.test`, passwordHash: await bcrypt.hash(initialPassword, 12), mustChangePassword: false },
   ]);
   await db.insert(employees).values([
-    { id: randomUUID(), userId: adminId, employeeNumber: "E2EREC-ADMIN", cuit: adminCuit, dni: "30999011", personalEmail: `${prefix}admin.personal@example.test`, address: "Calle E2E 100", phone: "3515550100", maritalStatus: "SINGLE", profileUpdatedAt: new Date(), firstName: "Admin", lastName: "Recovery" },
-    { id: randomUUID(), userId: employeeId, employeeNumber: "E2EREC-EMP", cuit: employeeCuit, dni: "30999010", personalEmail: `${prefix}employee.personal@example.test`, address: "Calle E2E 101", phone: "3515550101", maritalStatus: "SINGLE", profileUpdatedAt: new Date(), firstName: "Empleado", lastName: "Recovery" },
+    { id: randomUUID(), userId: adminId, cuit: adminCuit, dni: "30999011", address: "Calle E2E 100", phone: "3515550100", maritalStatus: "SINGLE", profileUpdatedAt: new Date(), firstName: "Admin", lastName: "Recovery" },
+    { id: randomUUID(), userId: employeeId, cuit: employeeCuit, dni: "30999010", address: "Calle E2E 101", phone: "3515550101", maritalStatus: "SINGLE", profileUpdatedAt: new Date(), firstName: "Empleado", lastName: "Recovery" },
   ]);
   await db.insert(userRoles).values([{ userId: adminId, roleId: adminRole.id }, { userId: employeeId, roleId: employeeRole.id }]);
   await new Promise((resolve) => { server = createApp().listen(0, "127.0.0.1", resolve); });

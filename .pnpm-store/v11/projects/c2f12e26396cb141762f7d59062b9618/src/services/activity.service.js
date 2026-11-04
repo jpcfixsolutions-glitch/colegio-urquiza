@@ -70,7 +70,7 @@ export async function onlineUsers(now = new Date()) {
   sessions.forEach(item => { const activityAt = item.lastActivityAt || item.createdAt; if (!latest.get(item.userId) || latest.get(item.userId) < activityAt) latest.set(item.userId, activityAt); });
   const ids = [...latest.keys()];
   if (!ids.length) return [];
-  const rows = await db.select({ id: users.id, email: users.email, username: users.username, firstName: employees.firstName, lastName: employees.lastName, employeeNumber: employees.employeeNumber })
+  const rows = await db.select({ id: users.id, email: users.email, username: users.username, firstName: employees.firstName, lastName: employees.lastName })
     .from(users).leftJoin(employees, eq(employees.userId, users.id)).where(and(inArray(users.id, ids), eq(users.active, true)));
   const mappedRoles = await roleMap(ids);
   return rows.map(row => ({ ...row, roles: mappedRoles.get(row.id) || [], lastActivityAt: latest.get(row.id), online: true }));
@@ -94,7 +94,7 @@ export async function accessHistory({ q = "", from, to, event, role, page = 1, p
   if (q) conditions.push(sql`lower(coalesce(${users.email}, '') || ' ' || coalesce(${users.username}, '') || ' ' || coalesce(${employees.firstName}, '') || ' ' || coalesce(${employees.lastName}, '')) like lower(${'%' + q + '%'})`);
   const where = and(...conditions);
   const totalRows = await db.select({ count: sql`count(*)` }).from(auditLogs).leftJoin(users, eq(auditLogs.actorUserId, users.id)).leftJoin(employees, eq(employees.userId, users.id)).where(where);
-  const rows = await db.select({ id: auditLogs.id, action: auditLogs.action, createdAt: auditLogs.createdAt, userId: users.id, email: users.email, username: users.username, firstName: employees.firstName, lastName: employees.lastName, employeeNumber: employees.employeeNumber })
+  const rows = await db.select({ id: auditLogs.id, action: auditLogs.action, createdAt: auditLogs.createdAt, userId: users.id, email: users.email, username: users.username, firstName: employees.firstName, lastName: employees.lastName })
     .from(auditLogs).leftJoin(users, eq(auditLogs.actorUserId, users.id)).leftJoin(employees, eq(employees.userId, users.id)).where(where).orderBy(sql`${auditLogs.createdAt} desc`).limit(pageSize).offset((page - 1) * pageSize);
   const mappedRoles = await roleMap(rows.map(row => row.userId).filter(Boolean));
   const items = rows.map(row => ({ ...row, roles: mappedRoles.get(row.userId) || [] })).filter(row => !role || row.roles.includes(role));

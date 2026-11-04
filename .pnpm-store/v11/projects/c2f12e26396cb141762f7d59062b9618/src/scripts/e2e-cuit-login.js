@@ -41,7 +41,7 @@ async function clean() {
     await db.delete(userRoles).where(inArray(userRoles.userId, userIds));
     await db.delete(users).where(inArray(users.id, userIds));
   }
-  const testEmployees = await db.select({ id: employees.id }).from(employees).where(like(employees.employeeNumber, "E2ECUIT%"));
+  const testEmployees = await db.select({ id: employees.id }).from(employees).where(like(employees.cuit, "20309990%"));
   if (testEmployees.length) await db.delete(employees).where(inArray(employees.id, testEmployees.map((employee) => employee.id)));
 }
 
@@ -59,9 +59,9 @@ async function run() {
     { id: inactiveUserId, email: `${prefix}inactive@example.test`, passwordHash: await bcrypt.hash(password, 12), active: false, mustChangePassword: false },
   ]);
   await db.insert(employees).values([
-    { id: normalEmployeeId, userId: normalUserId, employeeNumber: "E2ECUIT-001", cuit: "20-30999876-5", firstName: "Login", lastName: "Normal" },
-    { id: inactiveEmployeeId, userId: inactiveUserId, employeeNumber: "E2ECUIT-002", cuit: "20309990051", firstName: "Login", lastName: "Inactivo" },
-    { id: noUserEmployeeId, employeeNumber: "E2ECUIT-003", cuit: "20309990060", firstName: "Login", lastName: "Sin Cuenta" },
+    { id: normalEmployeeId, userId: normalUserId, cuit: "20-30999876-5", firstName: "Login", lastName: "Normal" },
+    { id: inactiveEmployeeId, userId: inactiveUserId, cuit: "20309990051", firstName: "Login", lastName: "Inactivo" },
+    { id: noUserEmployeeId, cuit: "20309990060", firstName: "Login", lastName: "Sin Cuenta" },
   ]);
   await db.insert(userRoles).values([{ userId: normalUserId, roleId: employeeRole.id }, { userId: inactiveUserId, roleId: employeeRole.id }]);
   assert.equal((await findUserForLogin(cuit))?.id, normalUserId, "el servicio debe resolver el empleado recién creado por CUIT normalizado");

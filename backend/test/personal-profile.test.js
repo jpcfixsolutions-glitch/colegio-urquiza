@@ -1,10 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { getPersonalProfileStatus } from "../src/services/personal-profile.service.js";
+import { getPersonalProfileStatus, personalProfileDto } from "../src/services/personal-profile.service.js";
 
 const completeEmployee = profileUpdatedAt => ({
-  personalEmail: "empleado@example.com",
   address: "Calle 123",
   phone: "3515555555",
   maritalStatus: "SINGLE",
@@ -38,4 +37,14 @@ test("el vencimiento trimestral respeta el último día del mes", () => {
   const status = getPersonalProfileStatus(completeEmployee(new Date("2026-01-31T12:00:00.000Z")), new Date("2026-04-29T12:00:00.000Z"));
   assert.equal(status.profileReviewDueAt.toISOString(), "2026-04-30T12:00:00.000Z");
   assert.equal(status.profileNeedsReview, false);
+});
+
+test("el perfil expone el email institucional sin duplicarlo en empleados", () => {
+  const profile = personalProfileDto({
+    firstName: "Ana", lastName: "Pérez", ...completeEmployee(new Date()),
+  }, "ana.perez@instituto.edu.ar");
+
+  assert.equal(profile.institutionalEmail, "ana.perez@instituto.edu.ar");
+  assert.equal("personalEmail" in profile, false);
+  assert.equal("employeeNumber" in profile, false);
 });

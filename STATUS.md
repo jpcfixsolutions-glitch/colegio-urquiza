@@ -1,5 +1,33 @@
 # Estado actual
 
+## Preparación de datos para cliente — 2026-11-04
+
+- Se vaciaron permanentemente los datos operativos de Turso y el bucket privado
+  `payslips`: empleados, áreas, recibos, versiones, avisos, solicitudes de
+  recuperación, sesiones, auditoría y archivos de Storage.
+- Se preservó sin cambios la única cuenta `admin@colegio.local` y su rol. La
+  comprobación final confirmó: 1 usuario, 0 empleados, 0 recibos, 0 versiones,
+  0 avisos, 0 áreas y 0 objetos en el bucket. Roles y permisos del sistema
+  continúan disponibles (8 y 8 respectivamente).
+
+## Eliminación de legajo y email personal — 2026-11-04
+
+- Se eliminó definitivamente `employees.employee_number` (legajo) y
+  `employees.personal_email`. La migración versionada
+  `20261104164607_thin_kang` fue generada y aplicada en Turso; una consulta
+  física posterior confirmó que ninguna de las dos columnas continúa presente.
+- Empleados, cuentas, actividad, recibos, carga masiva y sus pruebas dejaron
+  de transportar o mostrar legajo. La detección automática de recibos acepta
+  solamente el formato con CUIT, que es el identificador de asociación vigente.
+- Los perfiles y la gestión de personal muestran `Email institucional` desde
+  `users.email`, sin duplicarlo en `employees`. Se administra desde la cuenta
+  vinculada y se presenta como sólo lectura en el perfil del empleado.
+- Verificaciones: `pnpm test` backend pasó 28/28; `pnpm test` frontend pasó
+  13/13; `pnpm build` frontend completó correctamente (55 módulos). La E2E
+  administrativa existente quedó pendiente de corregir por un desfase previo:
+  sus fixtures envían `identifier` a un login que hoy valida `cuit`, y por eso
+  reciben 422 antes de ejecutar las aserciones del flujo.
+
 ## Campo de login compatible con admin bootstrap — 2026-11-01
 
 - El campo visual de inicio de sesión conserva el formato automático para

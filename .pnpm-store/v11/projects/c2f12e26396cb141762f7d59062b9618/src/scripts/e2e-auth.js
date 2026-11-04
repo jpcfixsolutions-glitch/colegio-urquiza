@@ -52,7 +52,7 @@ async function clean() {
     await db.delete(authSessions).where(inArray(authSessions.userId, ids));
     await db.delete(users).where(inArray(users.id, ids));
   }
-  const e2eEmployees = await db.select({ id: employees.id }).from(employees).where(like(employees.employeeNumber, "E2EAUTH%"));
+  const e2eEmployees = await db.select({ id: employees.id }).from(employees).where(like(employees.cuit, "203099900%"));
   if (e2eEmployees.length) await db.delete(employees).where(inArray(employees.id, e2eEmployees.map((employee) => employee.id)));
   const remaining = await db.select({ id: users.id }).from(users).where(like(users.email, `${prefix}%`));
   if (remaining.length) fail("la limpieza dejó usuarios e2e_auth_ en Turso");
@@ -76,7 +76,7 @@ async function createUser({ name, active = true, mustChangePassword = false, rol
   if (linkEmployee) {
     employeeId = randomUUID();
     cuit = "20309990019";
-    await db.insert(employees).values({ id: employeeId, userId: id, employeeNumber: `E2EAUTH-${name}`, cuit, firstName: "Perfil", lastName: "Prueba" });
+    await db.insert(employees).values({ id: employeeId, userId: id, cuit, firstName: "Perfil", lastName: "Prueba" });
   }
   return { id, employeeId, identifier: cuit || `${prefix}${name}` };
 }
@@ -117,7 +117,7 @@ async function run() {
   expectStatus(await request("/auth/change-password", { method: "POST", token: login.payload.accessToken, body: { currentPassword: password, newPassword: changedPassword } }), 204, "permite resolver cambio obligatorio");
   expectStatus(await request("/me/profile", { token: login.payload.accessToken }), 200, "habilita el formulario personal después de cambiar contraseña");
   expectStatus(await request("/announcements", { token: login.payload.accessToken }), 403, "bloquea recursos hasta completar datos personales");
-  const completedProfile = await request("/me/profile", { method: "PATCH", token: login.payload.accessToken, body: { personalEmail: "perfil@example.test", address: "Calle de prueba 123", phone: "3515555555", maritalStatus: "SINGLE", dni: "30999001", cuit: "20309990019" } });
+  const completedProfile = await request("/me/profile", { method: "PATCH", token: login.payload.accessToken, body: { address: "Calle de prueba 123", phone: "3515555555", maritalStatus: "SINGLE", dni: "30999001", cuit: "20309990019" } });
   expectStatus(completedProfile, 200, "permite completar datos personales");
   assert.equal(completedProfile.payload.item.profileComplete, true, "el perfil queda completo");
   const identityAfterProfile = await request("/auth/me", { token: login.payload.accessToken });

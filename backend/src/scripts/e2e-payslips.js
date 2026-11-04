@@ -62,7 +62,7 @@ async function clean() {
     await db.delete(authSessions).where(inArray(authSessions.userId, userIds));
     await db.delete(users).where(inArray(users.id, userIds));
   }
-  const e2eEmployees = await db.select({ id: employees.id }).from(employees).where(like(employees.employeeNumber, "E2EPAY%"));
+  const e2eEmployees = await db.select({ id: employees.id }).from(employees).where(like(employees.cuit, "203099900%"));
   if (e2eEmployees.length) await db.delete(employees).where(inArray(employees.id, e2eEmployees.map((employee) => employee.id)));
   const remaining = await db.select({ id: payslips.id }).from(payslips).where(like(payslips.title, "E2E payslip%"));
   assert.equal(remaining.length, 0, "la limpieza dejó recibos E2E en Turso");
@@ -85,11 +85,11 @@ async function startServer() {
 
 async function run() {
   await clean();
-  const employeeA = { id: randomUUID(), cuit: "20309990035", dni: "30999003", personalEmail: "e2e.owner@example.test", address: "Calle E2E 123", phone: "3515550001", maritalStatus: "SINGLE", profileUpdatedAt: new Date() };
-  const employeeB = { id: randomUUID(), cuit: "20309990043", dni: "30999004", personalEmail: "e2e.outsider@example.test", address: "Calle E2E 456", phone: "3515550002", maritalStatus: "SINGLE", profileUpdatedAt: new Date() };
+  const employeeA = { id: randomUUID(), cuit: "20309990035", dni: "30999003", address: "Calle E2E 123", phone: "3515550001", maritalStatus: "SINGLE", profileUpdatedAt: new Date() };
+  const employeeB = { id: randomUUID(), cuit: "20309990043", dni: "30999004", address: "Calle E2E 456", phone: "3515550002", maritalStatus: "SINGLE", profileUpdatedAt: new Date() };
   await db.insert(employees).values([
-    { ...employeeA, employeeNumber: "E2EPAY-001", firstName: "Recibo", lastName: "Propio" },
-    { ...employeeB, employeeNumber: "E2EPAY-002", firstName: "Recibo", lastName: "Ajeno" },
+    { ...employeeA, firstName: "Recibo", lastName: "Propio" },
+    { ...employeeB, firstName: "Recibo", lastName: "Ajeno" },
   ]);
   const owner = await createUser("owner", "EMPLOYEE", employeeA);
   const outsider = await createUser("outsider", "EMPLOYEE", employeeB);

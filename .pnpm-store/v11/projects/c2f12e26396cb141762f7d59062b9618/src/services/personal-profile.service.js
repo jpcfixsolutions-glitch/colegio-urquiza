@@ -1,6 +1,6 @@
 export const MARITAL_STATUSES = ["SINGLE", "MARRIED", "PARTNERED", "DIVORCED", "WIDOWED", "OTHER"];
 
-const REQUIRED_PROFILE_FIELDS = ["personalEmail", "address", "phone", "maritalStatus", "dni", "cuit"];
+const REQUIRED_PROFILE_FIELDS = ["address", "phone", "maritalStatus", "dni", "cuit"];
 
 function addCalendarMonths(date, months) {
   const result = new Date(date);
@@ -33,13 +33,12 @@ export function getPersonalProfileStatus(employee, now = new Date()) {
   };
 }
 
-export function personalProfileDto(employee) {
+export function personalProfileDto(employee, institutionalEmail = "") {
   const status = getPersonalProfileStatus(employee);
   return {
-    employeeNumber: employee.employeeNumber,
     firstName: employee.firstName,
     lastName: employee.lastName,
-    personalEmail: employee.personalEmail || "",
+    institutionalEmail: institutionalEmail || "",
     address: employee.address || "",
     phone: employee.phone || "",
     maritalStatus: employee.maritalStatus || "",

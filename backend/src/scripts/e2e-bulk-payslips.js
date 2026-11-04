@@ -36,14 +36,14 @@ async function clean() {
   if (slips.length) { await db.delete(payslipVersions).where(inArray(payslipVersions.payslipId, slips.map(item=>item.id))); await db.delete(payslips).where(inArray(payslips.id, slips.map(item=>item.id))); }
   const e2eUsers=await db.select({id:users.id}).from(users).where(like(users.email, `${prefix}%`));
   if(e2eUsers.length) { const ids=e2eUsers.map(item=>item.id); await db.delete(auditLogs).where(inArray(auditLogs.actorUserId,ids)); await db.delete(authSessions).where(inArray(authSessions.userId,ids)); await db.delete(users).where(inArray(users.id,ids)); }
-  const e2eEmployees=await db.select({id:employees.id}).from(employees).where(or(like(employees.employeeNumber,"E2EBULK%"),eq(employees.employeeNumber,"990000000001")));
+  const e2eEmployees=await db.select({id:employees.id}).from(employees).where(eq(employees.cuit,"20990000001"));
   if(e2eEmployees.length) await db.delete(employees).where(inArray(employees.id,e2eEmployees.map(item=>item.id)));
   assert.equal((await db.select({id:payslips.id}).from(payslips).where(like(payslips.title,"E2E bulk%"))).length,0,"la limpieza dejó recibos E2E");
 }
 
 async function run() {
   await clean();
-  const employee={id:randomUUID(),employeeNumber:"990000000001",cuit:"20990000001",firstName:"Carga",lastName:"Masiva"};
+  const employee={id:randomUUID(),cuit:"20990000001",firstName:"Carga",lastName:"Masiva"};
   await db.insert(employees).values(employee);
   const id=randomUUID(); const [role]=await db.select().from(roles).where(eq(roles.name,"PAYROLL_MANAGER"));
   await db.insert(users).values({id,email:`${prefix}manager@example.test`,username:`${prefix}manager`,passwordHash:await bcrypt.hash(password,12),mustChangePassword:false});

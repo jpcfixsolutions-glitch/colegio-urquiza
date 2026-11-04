@@ -42,7 +42,7 @@ async function clean() {
     await db.delete(authSessions).where(inArray(authSessions.userId, userIds));
     await db.delete(users).where(inArray(users.id, userIds));
   }
-  const e2eEmployees = await db.select({ id: employees.id }).from(employees).where(like(employees.employeeNumber, "E2EADMIN%"));
+  const e2eEmployees = await db.select({ id: employees.id }).from(employees).where(eq(employees.cuit, "20309990027"));
   if (e2eEmployees.length) await db.delete(employees).where(inArray(employees.id, e2eEmployees.map((employee) => employee.id)));
   const e2eAreas = await db.select({ id: areas.id }).from(areas).where(like(areas.code, "E2EADMIN%"));
   if (e2eAreas.length) await db.delete(areas).where(inArray(areas.id, e2eAreas.map((area) => area.id)));
@@ -74,7 +74,7 @@ async function run() {
   const areaB = await request("/areas", { method: "POST", token, body: { code: "E2EADMIN-B", name: "Área E2E B" } });
   expectStatus(areaA, 201, "crea primera área");
   expectStatus(areaB, 201, "crea segunda área");
-  const employee = await request("/employees", { method: "POST", token, body: { employeeNumber: "E2EADMIN-001", cuit: staffCuit, firstName: "Empleado", lastName: "Prueba", areaIds: [areaA.payload.item.id, areaB.payload.item.id] } });
+  const employee = await request("/employees", { method: "POST", token, body: { cuit: staffCuit, firstName: "Empleado", lastName: "Prueba", areaIds: [areaA.payload.item.id, areaB.payload.item.id] } });
   expectStatus(employee, 201, "crea empleado con múltiples áreas");
   expectStatus(await request(`/employees/${employee.payload.item.id}`, { method: "PATCH", token, body: { active: false, areaIds: [areaB.payload.item.id] } }), 204, "edita empleado y sus áreas");
   const employeeList = await request("/employees", { token });

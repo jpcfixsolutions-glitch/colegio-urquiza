@@ -49,7 +49,7 @@ export async function listPasswordRecoveryRequests() {
     requestCount: passwordRecoveryRequests.requestCount, firstRequestedAt: passwordRecoveryRequests.firstRequestedAt,
     lastRequestedAt: passwordRecoveryRequests.lastRequestedAt, resolvedAt: passwordRecoveryRequests.resolvedAt,
     cancelledAt: passwordRecoveryRequests.cancelledAt, userId: users.id, active: users.active,
-    employeeId: employees.id, employeeNumber: employees.employeeNumber, cuit: employees.cuit,
+    employeeId: employees.id, cuit: employees.cuit,
     firstName: employees.firstName, lastName: employees.lastName,
   }).from(passwordRecoveryRequests)
     .innerJoin(users, eq(passwordRecoveryRequests.userId, users.id))

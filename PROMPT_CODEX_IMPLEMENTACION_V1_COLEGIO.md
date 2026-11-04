@@ -213,7 +213,6 @@ La autorización real debe ser por permisos.
 ### Empleados
 - `employees.userId` es opcional y único.
 - Un empleado puede existir sin tener usuario.
-- `employeeNumber` / legajo es único.
 - Un empleado puede pertenecer a múltiples áreas mediante `employee_areas`.
 - No simplificar esto a `employees.areaId`.
 
@@ -746,18 +745,18 @@ La persona encargada debe poder cargar muchos PDFs de empleados en una sola oper
 
 Implementar UX de carga múltiple.
 
-Si el nombre del archivo contiene un legajo reconocible, permitir detección asistida.
+Si el nombre del archivo contiene un CUIT reconocible, permitir detección asistida.
 
 Ejemplo:
 
 ```text
-1234_2026_09.pdf
+Liquidación_09-2026_20-12345678-3_Ana_Pérez_1.pdf
 ```
 
 puede sugerir:
 
 ```text
-legajo 1234
+CUIT 20-12345678-3
 año 2026
 mes 09
 ```

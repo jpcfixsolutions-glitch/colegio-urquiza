@@ -31,14 +31,9 @@ test("acepta el sufijo Nro que indica la interfaz de carga", () => {
   );
 });
 
-test("acepta rutas internas del ZIP y conserva compatibilidad con el nombre anterior", () => {
+test("acepta rutas internas del ZIP y rechaza nombres sin CUIT", () => {
   assert.equal(parsePayslipFileName("recibos/Liquidación_12-2026_20123456783_Ana Gomez_1.pdf").cuit, "20123456783");
-  assert.deepEqual(parsePayslipFileName("1234_2026_09.pdf"), {
-    format: "LEGACY",
-    employeeNumber: "1234",
-    year: 2026,
-    month: 9,
-  });
+  assert.equal(parsePayslipFileName("1234_2026_09.pdf"), null);
 });
 
 test("rechaza CUIT y nombres inválidos", () => {

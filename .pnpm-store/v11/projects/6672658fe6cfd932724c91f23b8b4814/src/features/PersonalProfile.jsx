@@ -13,7 +13,7 @@ export const MARITAL_STATUS_OPTIONS = [
 ];
 
 const EMPTY_PROFILE = {
-  personalEmail: "",
+  institutionalEmail: "",
   address: "",
   phone: "",
   maritalStatus: "",
@@ -42,7 +42,6 @@ export function PersonalProfile({ required = false, reviewDue = false, onSaved }
       const { item } = await api("/me/profile", {
         method: "PATCH",
         body: JSON.stringify({
-          personalEmail: profile.personalEmail,
           address: profile.address,
           phone: profile.phone,
           maritalStatus: profile.maritalStatus,
@@ -69,7 +68,7 @@ export function PersonalProfile({ required = false, reviewDue = false, onSaved }
     {reviewDue && !required && <div className="profile-reminder"><strong>Es momento de revisar tus datos.</strong><span>Pasaron tres meses desde la última actualización. Confirmalos aunque no hayan cambiado.</span></div>}
     {loading ? <div className="state"><span className="spinner" />Cargando…</div> : <form onSubmit={save}>
       <div className="profile-grid">
-        <div className="field"><label>Email personal</label><input type="email" autoComplete="email" value={profile.personalEmail} onChange={event => setProfile({ ...profile, personalEmail: event.target.value })} required /></div>
+        <div className="field"><label>Email institucional</label><input type="email" autoComplete="email" value={profile.institutionalEmail || ""} readOnly /><small>La administración gestiona este email desde tu cuenta institucional.</small></div>
         <div className="field"><label>Teléfono</label><input type="tel" autoComplete="tel" minLength="6" maxLength="30" value={profile.phone} onChange={event => setProfile({ ...profile, phone: event.target.value })} required /></div>
         <div className="field profile-wide"><label>Domicilio</label><input autoComplete="street-address" minLength="5" maxLength="200" value={profile.address} onChange={event => setProfile({ ...profile, address: event.target.value })} required /></div>
         <div className="field"><label>Estado civil</label><select value={profile.maritalStatus} onChange={event => setProfile({ ...profile, maritalStatus: event.target.value })} required><option value="">Seleccionar…</option>{MARITAL_STATUS_OPTIONS.map(([value, label]) => <option value={value} key={value}>{label}</option>)}</select></div>
