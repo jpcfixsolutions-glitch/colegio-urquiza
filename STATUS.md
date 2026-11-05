@@ -1,5 +1,21 @@
 # Estado actual
 
+## Alineación de contacto en Datos personales — 2026-11-05
+
+- Se aplicó `align-self: start` únicamente a los contenedores de Email
+  institucional y Teléfono en `PersonalProfile`, mediante la clase
+  `profile-contact-field`. Esto evita que la grilla interna del teléfono
+  distribuya el alto adicional generado por la ayuda del email.
+- Se conservan el texto informativo, los estilos, los espacios, las validaciones
+  y el apilado existente hasta 700 px. Los demás campos mantienen exactamente
+  su geometría; no se modificaron backend, dependencias ni migraciones.
+- Verificaciones: frontend `pnpm test` pasó 13/13 y `pnpm build` completó.
+  Edge con respuestas API simuladas localmente verificó el perfil habitual y
+  el obligatorio a 320, 390, 700, 701, 768, 1024 y 1440 px: labels e inputs
+  alineados con desfase de 0 px en dos columnas, apilado móvil sin solapamiento,
+  sin desbordes horizontales ni errores JavaScript. Se revisaron visualmente
+  capturas desktop, tablet y móvil; evidencia en `output/qa-profile-alignment`.
+
 ## Preparación de datos para cliente — 2026-11-04
 
 - Se vaciaron permanentemente los datos operativos de Turso y el bucket privado

@@ -5,6 +5,7 @@
 .profile-heading h2, .profile-heading h3 { margin: 4px 0 8px; font-size: clamp(24px, 3vw, 31px); }
 .profile-heading > p:last-child { margin: 0; color: var(--gray-600); }
 .profile-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; }
+.profile-grid > .profile-contact-field { align-self: start; }
 .profile-wide { grid-column: 1 / -1; }
 .employee-form { width: 100%; }
 .employee-form .profile-heading { display: none; }
